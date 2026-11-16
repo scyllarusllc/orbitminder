@@ -1,8 +1,8 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 
-// Authentication stays server-side. No Google tokens or secrets are sent to the browser.
-// Auth.js uses OAuth state / PKCE protections and signed/encrypted session cookies.
+// All OAuth exchanges happen on the server. Only identity is included in
+// the session, never Google access/refresh tokens.
 const configured = Boolean(
   process.env.AUTH_GOOGLE_ID &&
   process.env.AUTH_GOOGLE_SECRET &&
@@ -29,7 +29,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   pages: { signIn: "/login" },
-  trustHost: false,
 });
 
 export const googleLoginConfigured = configured;
