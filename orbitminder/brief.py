@@ -44,11 +44,10 @@ def format_brief(report):
     if report.get("activity"):
         lines.extend(["", "## GitHub activity (read-only)"])
         for name, stats, url in report["activity"]:
-            mark = "at least " if stats.get("partial_counts") else ""
             lines.append(
-                f"- {name}: {mark}{stats['commits_last_n_days']} commits in "
-                f"{stats['window_days']} days; {mark}{stats['open_pull_requests']} open PRs; "
-                f"{mark}{stats['open_issues']} open issues ({url})")
+                f"- {name}: {stats['commits_last_n_days']} commits in "
+                f"{stats['window_days']} days; {stats['open_pull_requests']} open PRs; "
+                f"{stats['open_issues']} open issues ({url})")
         lines.append("Counts may be lower bounds when GitHub returns a full page of 100.")
         lines.append("Other repositories have not been activity-checked.")
     return "\n".join(lines) + "\n"
