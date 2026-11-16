@@ -23,7 +23,24 @@ python3 -m orbitminder.cli --data examples/projects.json
 python3 -m unittest discover -s tests -v
 ```
 
-The command above uses deterministic sample data, **not** a live sync.\n\n### GitHub live repository inventory (read-only)\n\n```bash\n# Public repositories, no credentials required\npython3 -m orbitminder.cli --github-owner scyllarusllc\n\n# Optional: include accessible private repositories with a least-privilege token\n# Export GITHUB_TOKEN privately in your shell; never commit it or paste it into logs.\npython3 -m orbitminder.cli --github-owner scyllarusllc --github-limit 100\n\n# Run tests offline\npython3 -m unittest discover -s tests -v\n```\n\nThe GitHub inventory reads repository metadata only (name, URL, archived state, last push, visibility and fetch timestamp). The current daily brief includes those repositories as active project records with a generic review action. It does **not** infer actual task priority from GitHub, fetch pull requests/issues, or claim that any coding task was completed. An HTTP/API error stops the command rather than returning a misleading empty inventory. Without GITHUB_TOKEN, only public repos are included. With it, only repositories owned by the selected account and accessible to that token are included. The token is read from the environment and not persisted.\n The existing ChatGPT "Mission Control" daily automation is separate and remains unchanged.
+The command above uses deterministic sample data, **not** a live sync.
+
+### GitHub live repository inventory (read-only)
+
+```bash
+# Public repositories, no credentials required
+python3 -m orbitminder.cli --github-owner scyllarusllc
+
+# Optional: include accessible private repositories with a least-privilege token
+# Export GITHUB_TOKEN privately in your shell; never commit it or paste it into logs.
+python3 -m orbitminder.cli --github-owner scyllarusllc --github-limit 100
+
+# Run tests offline
+python3 -m unittest discover -s tests -v
+```
+
+The GitHub inventory reads repository metadata only (name, URL, archived state, last push, visibility and fetch timestamp). The current daily brief includes those repositories as active project records with a generic review action. It does **not** infer actual task priority from GitHub, fetch pull requests/issues, or claim that any coding task was completed. An HTTP/API error stops the command rather than returning a misleading empty inventory. Without GITHUB_TOKEN, only public repos are included. With it, only repositories owned by the selected account and accessible to that token are included. The token is read from the environment and not persisted.
+ The existing ChatGPT "Mission Control" daily automation is separate and remains unchanged.
 
 ## MVP scope
 
@@ -56,4 +73,6 @@ orbitminder/
 - Email bodies and third-party content are untrusted input.
 - Public branding/domain and trademark checks are separate from technical implementation.
 
-**License:** GNU Affero General Public License v3.0 (AGPL-3.0-only). See [LICENSE](LICENSE). Commercial services may be offered subject to the AGPL's conditions; an additional commercial license requires the necessary rights from all contributors.\n\nMaintained by Scyllarus LLC. Proposed website: orbitminder.com (domain ownership/deployment not verified in this repository).
+**License:** GNU Affero General Public License v3.0 (AGPL-3.0-only). See [LICENSE](LICENSE). Commercial services may be offered subject to the AGPL's conditions; an additional commercial license requires the necessary rights from all contributors.
+
+Maintained by Scyllarus LLC. Proposed website: orbitminder.com (domain ownership/deployment not verified in this repository).
