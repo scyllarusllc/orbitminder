@@ -19,6 +19,7 @@ def main():
     parser.add_argument("--activity-days", type=int, default=7)
     parser.add_argument("--activity-max-repos", type=int, default=10)
     parser.add_argument("--date", default=date.today().isoformat())
+    parser.add_argument("--format", choices=["markdown", "json"], default="markdown")
     args = parser.parse_args()
     if args.github_activity and not args.github_owner:
         parser.error("--github-activity requires --github-owner")
@@ -40,7 +41,11 @@ def main():
         records = json.loads(args.data.read_text(encoding="utf-8"))
         if not isinstance(records, list):
             parser.error("Expected a JSON array of projects")
-    print(format_brief(build_brief(records, today)), end="")
+    report = build_brief(records, today)
+    if args.format == "json":
+        print(json.dumps(report, ensure_ascii=False))
+    else:
+        print(format_brief(report), end="")
 
 
 if __name__ == "__main__":
