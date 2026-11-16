@@ -16,6 +16,8 @@ jobs:
     defaults:
       run:
         working-directory: website
+    env:
+      AUTH_SECRET: ci-test-secret-placeholder-only-not-for-production
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
