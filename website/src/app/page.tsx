@@ -9,7 +9,7 @@ export default function Home() {
           <nav aria-label="Primary navigation" className="flex items-center gap-5 text-sm text-slate-300">
             <a href="#features" className="hover:text-white">Features</a>
             <a href="#roadmap" className="hover:text-white">Roadmap</a>
-            <a href={GITHUB} className="rounded-lg border border-white/20 px-3 py-2 hover:border-white/50">GitHub</a>
+            <a href={GITHUB} className="hidden rounded-lg border border-white/20 px-3 py-2 hover:border-white/50 sm:inline-block">GitHub</a>\n            <a href="/login" className="rounded-lg bg-cyan-300 px-3 py-2 font-semibold text-slate-950 hover:bg-cyan-200">Sign in</a>
           </nav>
         </header>
         <section className="grid gap-12 py-24 md:grid-cols-2 md:items-center md:py-36">
