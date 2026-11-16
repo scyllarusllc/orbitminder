@@ -1,0 +1,39 @@
+[
+  {
+    "name": "InboxTend",
+    "status": "active",
+    "priority": 5,
+    "next_action": "Design website OAuth and Local Agent pairing",
+    "source_status": "unverified",
+    "source_url": "https://github.com/scyllarusllc/inboxtend"
+  },
+  {
+    "name": "PhD applications",
+    "status": "waiting",
+    "priority": 4,
+    "next_action": "Review supervisor and university follow-ups",
+    "source_status": "unverified",
+    "source_url": "https://github.com/scyllarusllc/phd-application-tracker"
+  },
+  {
+    "name": "Visa",
+    "status": "active",
+    "priority": 4,
+    "next_action": "Review visa documentation requirements",
+    "source_status": "unverified"
+  },
+  {
+    "name": "EUCON IT",
+    "status": "active",
+    "priority": 3,
+    "next_action": "Review current systems and blockers",
+    "source_status": "unverified"
+  },
+  {
+    "name": "Scyllarus",
+    "status": "active",
+    "priority": 2,
+    "next_action": "Check SaaS priorities",
+    "source_status": "unverified"
+  }
+]
