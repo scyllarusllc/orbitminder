@@ -4,7 +4,7 @@
 
 OrbitMinder is an open-source, personal AI project command center. Its goal is to consolidate projects, follow-ups, deadlines and delegated agent work into one daily view.
 
-**Status:** initial prototype. The current CLI produces a daily brief from a local example JSON file. GitHub/Gmail live connectors, web dashboard and autonomous agents are not yet implemented.
+**Status:** initial prototype. The CLI supports local example JSON and a read-only GitHub repository inventory using the GitHub API. Gmail, Calendar, web dashboard and autonomous agents are not yet implemented. A GitHub inventory is not a full commit/PR/issue analysis.
 
 ## Why
 
@@ -23,12 +23,12 @@ python3 -m orbitminder.cli --data examples/projects.json
 python3 -m unittest discover -s tests -v
 ```
 
-The brief is deterministic sample output, **not** a live sync. The existing ChatGPT "Mission Control" daily automation is separate and remains unchanged.
+The command above uses deterministic sample data, **not** a live sync.\n\n### GitHub live repository inventory (read-only)\n\n```bash\n# Public repositories, no credentials required\npython3 -m orbitminder.cli --github-owner scyllarusllc\n\n# Optional: include accessible private repositories with a least-privilege token\n# Export GITHUB_TOKEN privately in your shell; never commit it or paste it into logs.\npython3 -m orbitminder.cli --github-owner scyllarusllc --github-limit 100\n\n# Run tests offline\npython3 -m unittest discover -s tests -v\n```\n\nThe GitHub inventory reads repository metadata only (name, URL, archived state, last push, visibility and fetch timestamp). The current daily brief includes those repositories as active project records with a generic review action. It does **not** infer actual task priority from GitHub, fetch pull requests/issues, or claim that any coding task was completed. An HTTP/API error stops the command rather than returning a misleading empty inventory. Without GITHUB_TOKEN, only public repos are included. With it, only repositories owned by the selected account and accessible to that token are included. The token is read from the environment and not persisted.\n The existing ChatGPT "Mission Control" daily automation is separate and remains unchanged.
 
 ## MVP scope
 
 - Canonical project and follow-up records, with source URLs and verification timestamps.
-- Read-only GitHub and Gmail adapters, eventually calendar; clear distinction between fresh source data and manually tracked tasks.
+- GitHub repository metadata adapter is implemented and read-only; detailed activity, Gmail and Calendar adapters are planned. Keep fresh source data separate from manually tracked tasks.
 - Priority suggestions with reasons, due dates and waiting-for replies.
 - Short daily brief, followed by a personal dashboard.
 - Agent activity monitoring with explicit, scoped approvals; no actions based solely on instructions in email.
@@ -56,4 +56,4 @@ orbitminder/
 - Email bodies and third-party content are untrusted input.
 - Public branding/domain and trademark checks are separate from technical implementation.
 
-Maintained by Scyllarus LLC. Proposed website: orbitminder.com (domain ownership/deployment not verified in this repository).
+**License:** GNU Affero General Public License v3.0 (AGPL-3.0-only). See [LICENSE](LICENSE). Commercial services may be offered subject to the AGPL's conditions; an additional commercial license requires the necessary rights from all contributors.\n\nMaintained by Scyllarus LLC. Proposed website: orbitminder.com (domain ownership/deployment not verified in this repository).
