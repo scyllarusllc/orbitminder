@@ -1,3 +1,4 @@
+import ProjectActivity from "@/components/project-activity";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
@@ -40,6 +41,7 @@ export default async function Dashboard() {
             </section>
           ))}
         </div>
+        <ProjectActivity />
         <p className="mt-8 text-xs text-slate-400">No sample values are presented as live user data.</p>
       </div>
     </main>
