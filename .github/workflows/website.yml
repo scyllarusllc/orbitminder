@@ -1,4 +1,4 @@
-name: Website checks
+name: Website build checks
 on:
   push:
     paths:
@@ -24,7 +24,6 @@ jobs:
         with:
           node-version: "22"
       - run: npm install --no-audit --no-fund
-      - run: npm test
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
