@@ -44,7 +44,7 @@ The GitHub inventory reads repository metadata only (name, URL, archived state, 
 
 ## Development progress and next tasks
 
-Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006–009 storage/freshness/dashboard read path in source, plus OM-011 read-only Gmail metadata adapter in source (separate OAuth consent pending). Live data import and production deployment remain pending; automated test suites were removed at the owner's request. This checklist reports **source-code implementation**, not production readiness. A checked box is not a claim of successful deployment or live integration. Work in the order below; keep the read-only, self-hostable MVP as the default.
+Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006–009 storage/freshness/dashboard read path in source; OM-011 Gmail metadata adapter and independent PKCE OAuth connection UI in source. Live consent and end-to-end Gmail sync are still pending. Live data import and production deployment remain pending; automated test suites were removed at the owner's request. This checklist reports **source-code implementation**, not production readiness. A checked box is not a claim of successful deployment or live integration. Work in the order below; keep the read-only, self-hostable MVP as the default.
 
 ### Completed in source
 
@@ -64,7 +64,7 @@ Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006–009 s
 
 ### Email and calendar sources (P1)
 
-- [ ] **OM-011 — Gmail read-only adapter (PYTHON SOURCE IMPLEMENTED, OAUTH PENDING):** [`gmail_metadata.py`](orbitminder/gmail_metadata.py) provides bounded, metadata-only Gmail reads with the `gmail.metadata` scope; [`gmail_import.py`](orbitminder/gmail_import.py) imports source references into owner-scoped SQLite records and logs partial/failure sync states. No mail sending or deleting is implemented. **Remaining:** separate consent/token management, authenticated account binding, website connection UI, manual verification. See [`docs/gmail-readonly.md`](docs/gmail-readonly.md).
+- [ ] **OM-011 — Gmail read-only adapter (OAUTH CONNECTION SOURCE IMPLEMENTED; LIVE SYNC PENDING):** [`gmail_metadata.py`](orbitminder/gmail_metadata.py) provides metadata-only Gmail reads; [`gmail_import.py`](orbitminder/gmail_import.py) imports source references to owner-scoped SQLite with partial/failure markers. The website now has separate PKCE consent and callback routes, encrypted per-owner server token storage, status and disconnect endpoints, and a connection panel. No mail sending or deleting. **Remaining:** configure real Google OAuth, connect token refresh to authenticated sync, display import status, and manually verify. No Gmail mailbox has been accessed. See [`docs/gmail-readonly.md`](docs/gmail-readonly.md).
 - [ ] **OM-012 — Mail follow-up review:** suggest waiting-for/reply follow-ups from source evidence; require user review before saving or delegating. **Done when:** proposals show uncertainty and a link back to the originating email.
 - [ ] **OM-013 — Calendar read-only adapter:** import upcoming events/deadlines with timezone, source and sync freshness. **Done when:** due dates are displayed in the user's chosen timezone and are never inferred from missing data.
 - [ ] **OM-014 — Unified daily brief:** deduplicate GitHub, Gmail, Calendar and manually tracked items and explain each priority recommendation. **Done when:** each actionable item exposes its origin and verification status.
