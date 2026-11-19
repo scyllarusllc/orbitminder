@@ -1,6 +1,6 @@
 # OrbitMinder normalized data model (OM-006)
 
-Status: **schema design and initial SQLite migration committed; not applied to a live database or verified by tests**. See [migration 0001](../migrations/0001_initial.sql).
+Status: **schema, local persistence code, and offline test cases committed; tests and live deployment not yet verified**. See [migration 0001](../migrations/0001_initial.sql).
 
 ## Ownership and source identity
 
@@ -24,12 +24,12 @@ Times are RFC 3339 UTC strings (`2026-11-19T13:00:00Z`); store original calendar
 
 ## Migration contract
 
-For OM-007, use an explicit transaction around schema application, verify `PRAGMA foreign_key_check`, and record a schema version. Maintain incremental, forward-only migrations and a tested backup/rollback process. Apply database file permissions for the service owner; do not save OAuth credentials or correspondence in these tables. This initial schema does not connect the dashboard or automatically create an on-disk SQLite database.
+The service-side [`ProjectStore`](../orbitminder/storage.py) creates a private SQLite database (new files mode 0600), applies the initial migration in an explicit transaction, checks `PRAGMA foreign_key_check`, and records a schema version. Existing files are not chmodded. Composite owner foreign keys intentionally restrict deletion until dependent records are explicitly detached or removed. Maintain incremental, forward-only migrations and a tested backup/rollback process. Apply database file permissions for the service owner; do not save OAuth credentials or correspondence in these tables. This initial schema does not connect the dashboard or automatically create an on-disk SQLite database.
 
 ## Open verification
 
-- [ ] Apply migration on a disposable SQLite database and verify foreign keys and indexes.
+- [ ] Run committed disposable-database migration tests and verify foreign keys and indexes (`python3 -m unittest tests/test_storage.py` or test discovery).
 - [ ] Verify duplicate provider IDs across owners/accounts, mismatched-owner relationships, and delete behavior.
-- [ ] Implement server-only persistence repository with owner-scoped queries (OM-007).
+- [x] Add server-only persistence repository with owner-scoped project/source reads and writes (`orbitminder/storage.py`). **Code committed; not yet exercised by the website or live GitHub sync.**
 - [ ] Verify partial/failed sync preserves previous observations (OM-008).
 - [ ] Confirm operational retention, backups, and actual deployed authentication before public rollout.
