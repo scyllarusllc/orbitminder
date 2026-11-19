@@ -47,7 +47,7 @@ The GitHub inventory reads repository metadata only (name, URL, archived state, 
 
 ## Development progress and next tasks
 
-Updated **2026-11-19** from the `main` branch. This checklist reports **source-code implementation**, not production readiness. A checked box is not a claim of successful deployment or live integration. Work in the order below; keep the read-only, self-hostable MVP as the default.
+Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006 (schema and documentation committed; verification pending). This checklist reports **source-code implementation**, not production readiness. A checked box is not a claim of successful deployment or live integration. Work in the order below; keep the read-only, self-hostable MVP as the default.
 
 ### Completed in source
 
@@ -59,7 +59,7 @@ Updated **2026-11-19** from the `main` branch. This checklist reports **source-c
 
 ### Next milestone — durable, trustworthy project data (P0)
 
-- [ ] **OM-006 — Define normalized models:** project, source record, sync run, follow-up and agent activity; include owner, source URL/ID, observed-at timestamp, verification state and last error. **Done when:** documented schema and migrations cover every field.
+- [ ] **OM-006 — Define normalized models (IN PROGRESS):** owner-scoped SQLite tables for project, source record, sync run, follow-up and agent activity are now in [`migrations/0001_initial.sql`](migrations/0001_initial.sql), with semantics in [`docs/data-model.md`](docs/data-model.md). **Remaining before checking complete:** run migration verification and foreign-key/ownership tests; schema is not yet deployed.
 - [ ] **OM-007 — SQLite persistence:** store normalized records with per-owner isolation and unique provider/source IDs; do not persist tokens in project records. **Done when:** a restart preserves records and duplicates are merged predictably.
 - [ ] **OM-008 — Freshness tracking:** record successful/failed fetch times independently, show stale/unchecked/error states in API and UI, never replace a failed fetch with zero activity. **Done when:** failed and partial syncs visibly remain unverified.
 - [ ] **OM-009 — Dashboard saved overview:** read persisted projects, source links, next actions and last sync time; add manual refresh while preserving the on-demand path. **Done when:** reload works without claiming an old snapshot is live.
