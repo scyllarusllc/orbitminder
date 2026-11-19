@@ -47,7 +47,7 @@ The GitHub inventory reads repository metadata only (name, URL, archived state, 
 
 ## Development progress and next tasks
 
-Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006/OM-007 schema and local persistence implemented in source; OM-008 provider freshness tracking implemented in source. Validation and website wiring remain pending. This checklist reports **source-code implementation**, not production readiness. A checked box is not a claim of successful deployment or live integration. Work in the order below; keep the read-only, self-hostable MVP as the default.
+Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006/007 persistence, OM-008 freshness, and OM-009 saved Dashboard read path implemented in source. Live data import, test verification and production deployment remain pending. This checklist reports **source-code implementation**, not production readiness. A checked box is not a claim of successful deployment or live integration. Work in the order below; keep the read-only, self-hostable MVP as the default.
 
 ### Completed in source
 
@@ -62,7 +62,7 @@ Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006/OM-007 
 - [ ] **OM-006 — Define normalized models (IN PROGRESS):** owner-scoped SQLite tables for project, source record, sync run, follow-up and agent activity are now in [`migrations/0001_initial.sql`](migrations/0001_initial.sql), with semantics in [`docs/data-model.md`](docs/data-model.md). **Remaining before checking complete:** run migration verification and foreign-key/ownership tests; schema is not yet deployed.
 - [ ] **OM-007 — SQLite persistence (IMPLEMENTED IN SOURCE, VERIFICATION PENDING):** `orbitminder/storage.py` now creates a private local database and provides owner-scoped project/source upserts, deduplication, and reads. Added `tests/test_storage.py` for persistence, owner isolation, migration and deduplication. **Remaining:** run tests, connect to the actual backend and verify restart behavior; no live integration claimed.
 - [ ] **OM-008 — Freshness tracking (BACKEND SOURCE IMPLEMENTED, UI PENDING):** `ProjectStore.record_sync`, `latest_sync` and `list_source_freshness` retain cached records and report provider `unchecked` / `succeeded` / `partial` / `failed` states separately from source verification. A failed/partial run makes displayed source freshness `stale` and does not erase last success; offline test cases were added. **Remaining:** run tests and expose this state through the authenticated API/UI without stale-as-live claims.
-- [ ] **OM-009 — Dashboard saved overview:** read persisted projects, source links, next actions and last sync time; add manual refresh while preserving the on-demand path. **Done when:** reload works without claiming an old snapshot is live.
+- [ ] **OM-009 — Dashboard saved overview (SOURCE IMPLEMENTED; VERIFICATION PENDING):** added `orbitminder/saved_overview.py`, authenticated `/api/saved-projects`, and the `SavedProjects` panel. It reads owner-scoped historical SQLite projects, next actions, source links and last sync states; panel reload is separate from the existing on-demand `Check GitHub`. Tests are committed but not run. **Remaining:** configure/populate a real private DB, run tests and verify browser reload/security; no live-source freshness claim.
 - [ ] **OM-010 — Verification:** add migration, ownership, failure, API and UI checks and verify existing CI before relying on this milestone. **Done when:** test results are recorded for the exact commit; no unrun tests are reported as passed.
 
 ### Email and calendar sources (P1)
@@ -83,7 +83,7 @@ Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006/OM-007 
 - [ ] **OM-018 — Live auth and deployment verification:** configure Google OAuth and secrets privately, check allowed-user access, session protection, HTTPS and rollback. **Done when:** the real deployed service passes sign-in and access-control checks.
 - [ ] **OM-019 — Operations and documentation:** document backups, migration rollback, rate limits, source sync errors and user-controlled retention. **Done when:** a self-hosting operator can recover safely without exposing tokens or private messages.
 
-**Implementation sequence:** OM-006 → OM-007 → OM-008 → OM-009 → OM-010, then OM-011–014; AgentSteers monitoring (OM-015) precedes any execution authorization (OM-016–017). Maintain this section as the progress tracker whenever code lands. No tests or deployment were run in this development session; committed test cases have not been verified on CI or a live host.
+**Implementation sequence:** OM-006 → OM-007 → OM-008 → OM-009 → OM-010, then OM-011–014; AgentSteers monitoring (OM-015) precedes any execution authorization (OM-016–017). Maintain this section as the progress tracker whenever code lands. Tests and deployment have not been run in the recent development sessions; newly committed test cases have not been verified on CI or a live host.
 
 ## MVP scope
 
