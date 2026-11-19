@@ -1,6 +1,6 @@
 # OrbitMinder normalized data model (OM-006)
 
-Status: **schema, local persistence code, and offline test cases committed; tests and live deployment not yet verified**. See [migration 0001](../migrations/0001_initial.sql).
+Status: **schema and local persistence code committed; live behavior has not been verified**. Automated test cases have been removed at the owner's request. See [migration 0001](../migrations/0001_initial.sql).
 
 ## Ownership and source identity
 
@@ -28,7 +28,7 @@ The service-side [`ProjectStore`](../orbitminder/storage.py) creates a private S
 
 ## Open verification
 
-- [ ] Run committed disposable-database migration tests and verify foreign keys and indexes (`python3 -m unittest tests/test_storage.py` or test discovery).
+- [ ] Manually verify schema migration, foreign keys, and indexes in an authorized disposable environment.
 - [ ] Verify duplicate provider IDs across owners/accounts, mismatched-owner relationships, and delete behavior.
 - [x] Add server-only persistence repository with owner-scoped project/source reads and writes (`orbitminder/storage.py`). **Code committed; not yet exercised by the website or live GitHub sync.**
 - [ ] Verify partial/failed sync preserves previous observations (OM-008).
