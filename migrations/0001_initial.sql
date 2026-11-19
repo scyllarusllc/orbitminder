@@ -1,7 +1,6 @@
 -- OrbitMinder local persistence schema v1 (OM-006).
 -- Apply with SQLite 3.37+ using an operator-controlled database and transaction.
 -- No OAuth tokens, raw email bodies, attachment bytes, or third-party instructions.
-PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS schema_migrations (
   version INTEGER PRIMARY KEY,
   applied_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
@@ -37,7 +36,8 @@ CREATE TABLE IF NOT EXISTS source_records (
   last_success_at TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  FOREIGN KEY(owner_id,project_id) REFERENCES projects(owner_id,id) ON DELETE SET NULL,
+  FOREIGN KEY(owner_id,project_id) REFERENCES projects(owner_id,id) ON DELETE RESTRICT,
+  UNIQUE(owner_id,id),
   UNIQUE(owner_id,provider,account_key,external_id)
 );
 CREATE INDEX IF NOT EXISTS idx_sources_owner_project ON source_records(owner_id,project_id);
@@ -71,7 +71,8 @@ CREATE TABLE IF NOT EXISTS follow_ups (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   FOREIGN KEY(owner_id,project_id) REFERENCES projects(owner_id,id) ON DELETE CASCADE,
-  FOREIGN KEY(owner_id,source_record_id) REFERENCES source_records(owner_id,id) ON DELETE SET NULL
+  FOREIGN KEY(owner_id,source_record_id) REFERENCES source_records(owner_id,id) ON DELETE RESTRICT,
+  UNIQUE(owner_id,id)
 );
 CREATE INDEX IF NOT EXISTS idx_followups_owner_due ON follow_ups(owner_id,status,due_at);
 
@@ -90,8 +91,8 @@ CREATE TABLE IF NOT EXISTS agent_activities (
   last_error TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  FOREIGN KEY(owner_id,project_id) REFERENCES projects(owner_id,id) ON DELETE SET NULL,
-  FOREIGN KEY(owner_id,follow_up_id) REFERENCES follow_ups(owner_id,id) ON DELETE SET NULL,
+  FOREIGN KEY(owner_id,project_id) REFERENCES projects(owner_id,id) ON DELETE RESTRICT,
+  FOREIGN KEY(owner_id,follow_up_id) REFERENCES follow_ups(owner_id,id) ON DELETE RESTRICT,
   UNIQUE(owner_id,provider,external_job_id)
 );
 CREATE INDEX IF NOT EXISTS idx_agent_owner_state ON agent_activities(owner_id,state,observed_at);
