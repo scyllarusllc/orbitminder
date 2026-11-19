@@ -30,6 +30,27 @@ the browser. This is a single-owner integration, not yet multi-tenant per-user G
 
 OAuth setup and security notes: [docs/google-login.md](docs/google-login.md).
 
+## Saved project snapshot (OM-009 source implementation)
+
+The private Dashboard now includes a **Saved projects** panel backed by
+`GET /api/saved-projects`. It is separate from the existing on-demand GitHub
+brief and **never calls a remote provider when reloading saved data**.
+
+The server operator may set `ORBITMINDER_DB_PATH` to an **absolute path**
+pointing to an initialized local SQLite database. The path must be kept private
+and readable only by the server's service account. The API requires the existing
+verified Google session and `ORBITMINDER_ALLOWED_EMAILS`; it uses the session's
+Google subject as the owner ID. No user IDs or database paths are accepted from
+the browser. The `orbitminder.saved_overview` Python module reads the schema
+through the owner-scoped `ProjectStore` interface. The data source must be
+populated by a separately approved importer; this feature does **not** run
+an automatic GitHub/Gmail/Calendar sync, nor claim cached data is current.
+
+When the path is absent, SQLite is unavailable, or the user is not authorized,
+the panel shows an explicit error/empty status and the separate manual
+`Check GitHub` button continues to work. No production migration, OAuth
+verification, or E2E browser test has yet been performed.
+
 ## Deployment status
 
 No production domain or Google OAuth client has been verified.
