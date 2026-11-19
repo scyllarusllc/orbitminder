@@ -4,7 +4,7 @@
 
 OrbitMinder is an open-source, personal AI project command center. Its goal is to consolidate projects, follow-ups, deadlines and delegated agent work into one daily view.
 
-**Status (2026-11-19):** early, read-only prototype. The Python CLI supports local example JSON and GitHub repository/activity summaries. A Next.js website, Google sign-in code, a protected single-owner GitHub brief API, and an on-demand private dashboard are implemented in source, but production deployment, live Google OAuth and end-to-end behavior are **not verified**. Gmail, Calendar, durable cross-source tracking and real agent execution are not integrated. GitHub activity is sampled; it does not prove task completion.
+**Status (2026-11-19):** early, read-only prototype. The Python CLI supports local example JSON and GitHub repository/activity summaries. A Next.js website, Google sign-in code, a protected single-owner GitHub brief API, and an on-demand private dashboard are implemented in source, but production deployment, live Google OAuth and end-to-end behavior are **not verified**. Gmail OAuth connection, Calendar, full cross-source sync and real agent execution are not integrated; a read-only Gmail metadata adapter exists in source. GitHub activity is sampled; it does not prove task completion.
 
 ## Why
 
@@ -37,7 +37,6 @@ python3 -m orbitminder.cli --github-owner scyllarusllc --github-limit 100
 # Activity-aware brief: last 7 days of commits and currently open PRs/issues
 python3 -m orbitminder.cli --github-owner scyllarusllc --github-activity --github-limit 20 --activity-max-repos 10 --activity-days 7
 
-# Run tests offline
 ```
 
 The GitHub inventory reads repository metadata only (name, URL, archived state, last push, visibility and fetch timestamp). The current daily brief includes those repositories as active project records with a generic review action. Without --github-activity it does **not** fetch pull requests/issues or infer actual task priority. With --github-activity, it makes up to three additional read-only GitHub API requests per checked repository (commits, open PRs, open issues); it excludes PRs from the issue count, sorts checked project recommendations by simple open-item heuristics, and never claims work is complete. This is a triage heuristic, not AI analysis. To limit API use, activity checking defaults to the first 10 nonarchived repositories out of the first 30 returned repositories; other repositories are not activity-verified. Counts are lower bounds if a query returns 100 items, since pagination of activity is not implemented. An HTTP/API error stops the command rather than returning a misleading empty inventory. Without GITHUB_TOKEN, only public repos are included. With it, only repositories owned by the selected account and accessible to that token are included. The token is read from the environment and not persisted.
@@ -45,7 +44,7 @@ The GitHub inventory reads repository metadata only (name, URL, archived state, 
 
 ## Development progress and next tasks
 
-Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006/007 persistence, OM-008 freshness, and OM-009 saved Dashboard read path implemented in source. Live data import and production deployment remain pending; automated test suites were removed at the owner's request. This checklist reports **source-code implementation**, not production readiness. A checked box is not a claim of successful deployment or live integration. Work in the order below; keep the read-only, self-hostable MVP as the default.
+Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006–009 storage/freshness/dashboard read path in source, plus OM-011 read-only Gmail metadata adapter in source (separate OAuth consent pending). Live data import and production deployment remain pending; automated test suites were removed at the owner's request. This checklist reports **source-code implementation**, not production readiness. A checked box is not a claim of successful deployment or live integration. Work in the order below; keep the read-only, self-hostable MVP as the default.
 
 ### Completed in source
 
@@ -65,7 +64,7 @@ Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006/007 per
 
 ### Email and calendar sources (P1)
 
-- [ ] **OM-011 — Gmail read-only adapter:** explicit OAuth consent, least-privilege read scope, per-account ownership, cursor/pagination and source-link deduplication. **Done when:** a consented account can import message metadata without any send/delete capability.
+- [ ] **OM-011 — Gmail read-only adapter (PYTHON SOURCE IMPLEMENTED, OAUTH PENDING):** [`gmail_metadata.py`](orbitminder/gmail_metadata.py) provides bounded, metadata-only Gmail reads with the `gmail.metadata` scope; [`gmail_import.py`](orbitminder/gmail_import.py) imports source references into owner-scoped SQLite records and logs partial/failure sync states. No mail sending or deleting is implemented. **Remaining:** separate consent/token management, authenticated account binding, website connection UI, manual verification. See [`docs/gmail-readonly.md`](docs/gmail-readonly.md).
 - [ ] **OM-012 — Mail follow-up review:** suggest waiting-for/reply follow-ups from source evidence; require user review before saving or delegating. **Done when:** proposals show uncertainty and a link back to the originating email.
 - [ ] **OM-013 — Calendar read-only adapter:** import upcoming events/deadlines with timezone, source and sync freshness. **Done when:** due dates are displayed in the user's chosen timezone and are never inferred from missing data.
 - [ ] **OM-014 — Unified daily brief:** deduplicate GitHub, Gmail, Calendar and manually tracked items and explain each priority recommendation. **Done when:** each actionable item exposes its origin and verification status.
