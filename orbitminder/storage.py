@@ -109,6 +109,8 @@ class ProjectStore:
             raise ValueError("provider and external_id are required")
         if not isinstance(account_key, str):
             raise ValueError("account_key must be a string")
+        if verification_state not in ("unchecked", "verified", "stale", "error"):
+            raise ValueError("invalid verification_state")
         now = _now()
         if verification_state == "verified" and not observed_at:
             observed_at = now
@@ -128,7 +130,10 @@ class ProjectStore:
                     project_id=excluded.project_id,source_url=excluded.source_url,
                     title=excluded.title,observed_at=excluded.observed_at,
                     verification_state=excluded.verification_state,last_error=NULL,
-                    last_success_at=excluded.last_success_at,updated_at=excluded.updated_at""",
+                    last_success_at=CASE WHEN excluded.verification_state='verified'
+                      THEN excluded.last_success_at
+                      ELSE source_records.last_success_at END,
+                    updated_at=excluded.updated_at""",
                 (source_id, owner_id, project_id, provider, account_key, external_id,
                  source_url, title, observed_at, verification_state, None,
                  observed_at if verification_state == "verified" else None, now, now),
@@ -151,7 +156,11 @@ class ProjectStore:
         owner_id = _owner(owner_id)
         if state not in ("succeeded", "partial", "failed"):
             raise ValueError("sync run requires a terminal state")
-        if not isinstance(checked_count, int) or checked_count < 0:
+        if not isinstance(provider, str) or not provider.strip():
+            raise ValueError("provider is required")
+        if not isinstance(account_key, str):
+            raise ValueError("account_key must be a string")
+        if type(checked_count) is not int or checked_count < 0:
             raise ValueError("invalid checked_count")
         run_id, now = uuid4().hex, _now()
         with self._connect() as db:
@@ -163,3 +172,56 @@ class ProjectStore:
                  checked_count, str(last_error)[:200] if last_error else None),
             )
         return run_id
+
+    def latest_sync(self, owner_id, *, provider, account_key=""):
+        """Last finished sync for a single owner/provider/account, or None."""
+        owner_id = _owner(owner_id)
+        with self._connect() as db:
+            row = db.execute(
+                """SELECT id,provider,account_key,started_at,finished_at,state,
+                          checked_count,last_error
+                   FROM sync_runs
+                   WHERE owner_id=? AND provider=? AND account_key=?
+                   ORDER BY rowid DESC LIMIT 1""",
+                (owner_id, provider, account_key),
+            ).fetchone()
+            return dict(row) if row else None
+
+    def list_source_freshness(self, owner_id, *, provider, account_key=""):
+        """Read-only snapshot; failures cannot be disguised as zero activity.
+
+        A successful provider run does not itself prove every cached record was
+        checked. Distinguish stored source verification from provider sync state.
+        """
+        owner_id = _owner(owner_id)
+        run = self.latest_sync(owner_id, provider=provider, account_key=account_key)
+        with self._connect() as db:
+            records = [dict(row) for row in db.execute(
+                """SELECT id,project_id,provider,account_key,external_id,source_url,
+                          title,observed_at,verification_state,last_error,last_success_at
+                   FROM source_records
+                   WHERE owner_id=? AND provider=? AND account_key=?
+                   ORDER BY updated_at DESC,id""",
+                (owner_id, provider, account_key),
+            )]
+        run_state = run["state"] if run else "unchecked"
+        for record in records:
+            record["stored_verification_state"] = record.pop("verification_state")
+            if run_state in ("failed", "partial"):
+                record["verification_state"] = "stale"
+            elif run_state == "unchecked":
+                record["verification_state"] = "unchecked"
+            else:
+                record["verification_state"] = record["stored_verification_state"]
+        return {
+            "provider": provider,
+            "account_key": account_key,
+            "sync_state": run_state,
+            "last_checked_at": run["finished_at"] if run else None,
+            "checked_count": run["checked_count"] if run else None,
+            "last_error": run["last_error"] if run else None,
+            "cached_record_count": len(records),
+            "records": records,
+            "is_fully_verified": run_state == "succeeded" and
+                all(item["verification_state"] == "verified" for item in records),
+        }
