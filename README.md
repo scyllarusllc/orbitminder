@@ -4,7 +4,7 @@
 
 OrbitMinder is an open-source, personal AI project command center. Its goal is to consolidate projects, follow-ups, deadlines and delegated agent work into one daily view.
 
-**Status:** initial prototype. The CLI supports local example JSON and a read-only GitHub repository inventory using the GitHub API. Gmail, Calendar, web dashboard and autonomous agents are not yet implemented. The optional GitHub activity mode also reads recent commits and open PRs/issues for a limited number of repositories; it does not infer task completion.
+**Status (2026-11-19):** early, read-only prototype. The Python CLI supports local example JSON and GitHub repository/activity summaries. A Next.js website, Google sign-in code, a protected single-owner GitHub brief API, and an on-demand private dashboard are implemented in source, but production deployment, live Google OAuth and end-to-end behavior are **not verified**. Gmail, Calendar, durable cross-source tracking and real agent execution are not integrated. GitHub activity is sampled; it does not prove task completion.
 
 ## Why
 
@@ -44,6 +44,46 @@ python3 -m unittest discover -s tests -v
 
 The GitHub inventory reads repository metadata only (name, URL, archived state, last push, visibility and fetch timestamp). The current daily brief includes those repositories as active project records with a generic review action. Without --github-activity it does **not** fetch pull requests/issues or infer actual task priority. With --github-activity, it makes up to three additional read-only GitHub API requests per checked repository (commits, open PRs, open issues); it excludes PRs from the issue count, sorts checked project recommendations by simple open-item heuristics, and never claims work is complete. This is a triage heuristic, not AI analysis. To limit API use, activity checking defaults to the first 10 nonarchived repositories out of the first 30 returned repositories; other repositories are not activity-verified. Counts are lower bounds if a query returns 100 items, since pagination of activity is not implemented. An HTTP/API error stops the command rather than returning a misleading empty inventory. Without GITHUB_TOKEN, only public repos are included. With it, only repositories owned by the selected account and accessible to that token are included. The token is read from the environment and not persisted.
  The existing ChatGPT "Mission Control" daily automation is separate and remains unchanged.
+
+## Development progress and next tasks
+
+Updated **2026-11-19** from the `main` branch. This checklist reports **source-code implementation**, not production readiness. A checked box is not a claim of successful deployment or live integration. Work in the order below; keep the read-only, self-hostable MVP as the default.
+
+### Completed in source
+
+- [x] **OM-001 — CLI project brief:** deterministic local project input, ranked next actions, waiting/blocked/due summaries and JSON output.
+- [x] **OM-002 — Read-only GitHub inventory:** repository metadata and sampled recent commits, open PRs and issues, with source URLs.
+- [x] **OM-003 — Web foundation:** Next.js homepage, Google sign-in integration code, protected dashboard shell and owner allowlist checks.
+- [x] **OM-004 — On-demand GitHub dashboard:** authenticated API backed by the Python CLI and a manual refresh UI.
+- [x] **OM-005 — Dashboard activity sections:** display sampled GitHub counts, next actions, waiting/blocked/due lists and unverified sources (`a1bc347`). No live deployment claim.
+
+### Next milestone — durable, trustworthy project data (P0)
+
+- [ ] **OM-006 — Define normalized models:** project, source record, sync run, follow-up and agent activity; include owner, source URL/ID, observed-at timestamp, verification state and last error. **Done when:** documented schema and migrations cover every field.
+- [ ] **OM-007 — SQLite persistence:** store normalized records with per-owner isolation and unique provider/source IDs; do not persist tokens in project records. **Done when:** a restart preserves records and duplicates are merged predictably.
+- [ ] **OM-008 — Freshness tracking:** record successful/failed fetch times independently, show stale/unchecked/error states in API and UI, never replace a failed fetch with zero activity. **Done when:** failed and partial syncs visibly remain unverified.
+- [ ] **OM-009 — Dashboard saved overview:** read persisted projects, source links, next actions and last sync time; add manual refresh while preserving the on-demand path. **Done when:** reload works without claiming an old snapshot is live.
+- [ ] **OM-010 — Verification:** add migration, ownership, failure, API and UI checks and verify existing CI before relying on this milestone. **Done when:** test results are recorded for the exact commit; no unrun tests are reported as passed.
+
+### Email and calendar sources (P1)
+
+- [ ] **OM-011 — Gmail read-only adapter:** explicit OAuth consent, least-privilege read scope, per-account ownership, cursor/pagination and source-link deduplication. **Done when:** a consented account can import message metadata without any send/delete capability.
+- [ ] **OM-012 — Mail follow-up review:** suggest waiting-for/reply follow-ups from source evidence; require user review before saving or delegating. **Done when:** proposals show uncertainty and a link back to the originating email.
+- [ ] **OM-013 — Calendar read-only adapter:** import upcoming events/deadlines with timezone, source and sync freshness. **Done when:** due dates are displayed in the user's chosen timezone and are never inferred from missing data.
+- [ ] **OM-014 — Unified daily brief:** deduplicate GitHub, Gmail, Calendar and manually tracked items and explain each priority recommendation. **Done when:** each actionable item exposes its origin and verification status.
+
+### Agent monitoring and delegated work (P2)
+
+- [ ] **OM-015 — AgentSteers read-only status adapter:** observe approved job IDs, status history and errors with per-user authorization; mock states stay labeled as mock. **Done when:** dashboard never confuses queued/simulated with completed execution.
+- [ ] **OM-016 — Delegation approval flow:** show exact task, destination, permissions and affected resources before a user explicitly approves; email content itself grants no authority. **Done when:** unauthorized or ambiguous dispatch is rejected.
+- [ ] **OM-017 — Real execution integration, separately gated:** verify OAuth, scoped worker permissions, idempotency, cancellation, audit log and end-to-end safety before enabling Codex or any write action. **Done when:** an authorized staging job runs with recorded evidence and failure recovery; this remains disabled until verified.
+
+### Release gates (P0 before public launch)
+
+- [ ] **OM-018 — Live auth and deployment verification:** configure Google OAuth and secrets privately, check allowed-user access, session protection, HTTPS and rollback. **Done when:** the real deployed service passes sign-in and access-control checks.
+- [ ] **OM-019 — Operations and documentation:** document backups, migration rollback, rate limits, source sync errors and user-controlled retention. **Done when:** a self-hosting operator can recover safely without exposing tokens or private messages.
+
+**Implementation sequence:** OM-006 → OM-007 → OM-008 → OM-009 → OM-010, then OM-011–014; AgentSteers monitoring (OM-015) precedes any execution authorization (OM-016–017). Maintain this section as the progress tracker whenever code lands. No tests or deployment were run as part of this README update.
 
 ## MVP scope
 
