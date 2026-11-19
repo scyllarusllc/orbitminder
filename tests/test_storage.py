@@ -68,5 +68,52 @@ class StorageTests(unittest.TestCase):
             ProjectStore(Path("relative.sqlite3"))
 
 
+    def test_sync_freshness_reports_failed_and_partial_without_zeroing_cache(self):
+        self.store.upsert_source("owner-a", provider="github", account_key="main",
+                                 external_id="org/repo", verification_state="verified")
+        before = self.store.list_source_freshness("owner-a", provider="github", account_key="main")
+        self.assertEqual(before["sync_state"], "unchecked")
+        self.assertEqual(before["records"][0]["verification_state"], "unchecked")
+        self.assertIsNone(before["checked_count"])
+        self.store.record_sync("owner-a", provider="github", account_key="main",
+                               state="succeeded", checked_count=1)
+        good = self.store.list_source_freshness("owner-a", provider="github", account_key="main")
+        self.assertTrue(good["is_fully_verified"])
+        self.assertEqual(good["records"][0]["verification_state"], "verified")
+
+        self.store.record_sync("owner-a", provider="github", account_key="main",
+                               state="failed", last_error="request_failed")
+        failed = self.store.list_source_freshness("owner-a", provider="github", account_key="main")
+        self.assertEqual(failed["sync_state"], "failed")
+        self.assertFalse(failed["is_fully_verified"])
+        self.assertEqual(failed["records"][0]["verification_state"], "stale")
+        self.assertEqual(failed["cached_record_count"], 1)
+        self.assertEqual(failed["checked_count"], 0)
+        self.assertIsNotNone(failed["records"][0]["last_success_at"])
+
+        self.store.record_sync("owner-a", provider="github", account_key="main",
+                               state="partial", checked_count=1)
+        partial = self.store.list_source_freshness("owner-a", provider="github", account_key="main")
+        self.assertEqual(partial["sync_state"], "partial")
+        self.assertEqual(partial["records"][0]["verification_state"], "stale")
+        self.assertFalse(partial["is_fully_verified"])
+
+    def test_latest_sync_isolated_by_owner_and_account(self):
+        self.store.record_sync("owner-a", provider="gmail", account_key="one", state="failed")
+        self.assertIsNone(self.store.latest_sync("owner-b", provider="gmail", account_key="one"))
+        self.assertIsNone(self.store.latest_sync("owner-a", provider="gmail", account_key="two"))
+        self.assertEqual(self.store.latest_sync("owner-a", provider="gmail",
+                                                account_key="one")["state"], "failed")
+
+    def test_unverified_upsert_retains_last_success(self):
+        args = dict(provider="github", external_id="org/repo")
+        self.store.upsert_source("owner-a", **args, verification_state="verified")
+        initial = self.store.list_sources("owner-a")[0]["last_success_at"]
+        self.store.upsert_source("owner-a", **args, verification_state="stale")
+        item = self.store.list_sources("owner-a")[0]
+        self.assertEqual(item["last_success_at"], initial)
+        self.assertEqual(item["verification_state"], "stale")
+
+
 if __name__ == "__main__":
     unittest.main()
