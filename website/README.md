@@ -13,7 +13,6 @@ npm install
 cp .env.example .env.local
 # Configure AUTH_SECRET, AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET to enable sign-in.
 npm run dev
-npm test
 npm run lint
 npm run typecheck
 npm run build
@@ -55,9 +54,7 @@ verification, or E2E browser test has yet been performed.
 
 No production domain or Google OAuth client has been verified.
 Do not claim deployed login until configured and tested against Google.
-GitHub Action `website.yml` runs tests, lint, TypeScript and production build on website changes.
-`npm test` currently contains lightweight source/configuration regression checks,
-**not** a full simulated-provider OAuth test or end-to-end browser test. These are required before launch.
+GitHub Action `website.yml` runs lint, TypeScript checks and production build on website changes. Automated test cases and the `npm test` script were removed at the owner's request. OAuth and end-to-end behavior remain unverified; do not claim deployment readiness on the basis of build checks alone.
 
 ## Integration constraints
 
