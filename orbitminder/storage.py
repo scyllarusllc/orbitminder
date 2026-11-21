@@ -241,7 +241,10 @@ class ProjectStore:
         if complete_snapshot_at is not None:
             if not isinstance(complete_snapshot_at, datetime) or complete_snapshot_at.tzinfo is None:
                 raise ValueError("complete source snapshot must have an aware timestamp")
-            snapshot_stamp = complete_snapshot_at.astimezone(timezone.utc).isoformat()
+            snapshot_utc = complete_snapshot_at.astimezone(timezone.utc)
+            if snapshot_utc > datetime.now(timezone.utc):
+                raise ValueError("future source snapshot is not accepted")
+            snapshot_stamp = snapshot_utc.isoformat()
             if len({task.id for task in tasks}) != len(tasks):
                 raise ValueError("duplicate task IDs in complete snapshot")
         now = _now()
