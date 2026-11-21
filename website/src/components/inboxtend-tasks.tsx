@@ -48,11 +48,26 @@ export default function InboxtendTasks() {
   const [sortBy, setSortBy] = useState<"priority" | "due" | "updated">("priority");
   const [query, setQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [projectFilter, setProjectFilter] = useState("all");
+
+  const projects = useMemo(() => {
+    const summaries = new Map<string, { total: number; open: number; high: number }>();
+    for (const task of snapshot?.items ?? []) {
+      const name = task.project_label?.trim() || "Uncategorized";
+      const counts = summaries.get(name) ?? { total: 0, open: 0, high: 0 };
+      counts.total++;
+      if (task.status !== "done") counts.open++;
+      if (task.priority === "high" && task.status !== "done") counts.high++;
+      summaries.set(name, counts);
+    }
+    return [...summaries].sort(([a], [b]) => a.localeCompare(b));
+  }, [snapshot]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     const rows = (snapshot?.items ?? []).filter(task =>
       (statusFilter === "all" || task.status === statusFilter) &&
+      (projectFilter === "all" || (task.project_label?.trim() || "Uncategorized") === projectFilter) &&
       (agentFilter === "all" || (agentFilter === "assigned"
         ? Boolean(task.assigned_agent) : !task.assigned_agent)) &&
       (!needle || task.title.toLocaleLowerCase().includes(needle) ||
@@ -77,7 +92,7 @@ export default function InboxtendTasks() {
       if (!Number.isNaN(newer) && newer !== 0) return newer;
       return a.external_id.localeCompare(b.external_id);
     });
-  }, [snapshot, statusFilter, agentFilter, sortBy, query]);
+  }, [snapshot, statusFilter, agentFilter, sortBy, query, projectFilter]);
 
   async function load() {
     setState("loading");
@@ -129,6 +144,25 @@ export default function InboxtendTasks() {
           <p className="mt-1 text-xl font-semibold tabular-nums">{item.count}</p>
         </div>)}
       </div>
+      <div className="mt-5 rounded-xl border border-white/10 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">Projects in this snapshot</h3>
+          <span className="text-xs text-slate-400">{projects.length} project groups · cached only</span>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button type="button" aria-pressed={projectFilter === "all"}
+            onClick={() => setProjectFilter("all")}
+            className={`rounded-lg border px-3 py-2 text-xs ${projectFilter === "all" ? "border-cyan-400 bg-cyan-400/10 text-cyan-200" : "border-white/20 text-slate-300"}`}>
+            All projects · {snapshot.items.length}
+          </button>
+          {projects.map(([name, counts]) => <button key={name} type="button"
+            aria-pressed={projectFilter === name} onClick={() => setProjectFilter(name)}
+            className={`rounded-lg border px-3 py-2 text-left text-xs ${projectFilter === name ? "border-cyan-400 bg-cyan-400/10 text-cyan-200" : "border-white/20 text-slate-300"}`}>
+            <span className="font-medium">{name}</span>
+            <span className="ml-2 opacity-80">{counts.open} open / {counts.total} total{counts.high > 0 ? ` · ${counts.high} high` : ""}</span>
+          </button>)}
+        </div>
+      </div>
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Task filters">
         <label className="text-xs text-slate-300">Search tasks
           <input aria-label="Search tasks" value={query} onChange={e => setQuery(e.target.value)}
@@ -156,7 +190,7 @@ export default function InboxtendTasks() {
       </div>
       <p className="mt-3 text-xs text-slate-400" role="status">
         Showing {filtered.length} of {snapshot.items.length} cached tasks (up to the first 100 loaded).
-        Filters and sorting affect only this local list.
+        Filters and sorting affect only this local list, not all tasks in the source.
       </p>
       {snapshot.items.length > 0 && filtered.length === 0 && <p className="mt-4 text-sm text-slate-300">
         No cached tasks match these filters.
