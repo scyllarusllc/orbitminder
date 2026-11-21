@@ -23,6 +23,16 @@ flowchart TB
     OM -.->|"Approved task actions"| IB
     AS["AgentSteers"] -->|"Job status"| OM
     OM -.->|"Approved delegation"| AS
+    classDef center fill:#DBEAFE,stroke:#2563EB,color:#1E3A8A,stroke-width:2px
+    classDef mail fill:#D1FAE5,stroke:#059669,color:#065F46
+    classDef agent fill:#F3E8FF,stroke:#9333EA,color:#581C87
+    classDef code fill:#F1F5F9,stroke:#64748B,color:#334155
+    classDef human fill:#FEF3C7,stroke:#D97706,color:#92400E
+    class OM center
+    class IB mail
+    class AS agent
+    class GH code
+    class U human
 ```
 
 **One authoritative executor per action:** Inboxtend retains ownership of email tasks and its existing Agent runs; AgentSteers executes only separately authorized work. Future write requests require server-side permission checks, task revision checks, an idempotency key, audit history, and failure reconciliation. GitHub access remains read-only unless separately scoped and authorized. **This is a product goal, not a claim that write APIs or real Agent execution are already available.**
@@ -183,6 +193,16 @@ flowchart TB
     OM -.->|"授权后的任务操作"| IB
     AS["AgentSteers"] -->|"读取执行状态"| OM
     OM -.->|"授权后的任务委派"| AS
+    classDef center fill:#DBEAFE,stroke:#2563EB,color:#1E3A8A,stroke-width:2px
+    classDef mail fill:#D1FAE5,stroke:#059669,color:#065F46
+    classDef agent fill:#F3E8FF,stroke:#9333EA,color:#581C87
+    classDef code fill:#F1F5F9,stroke:#64748B,color:#334155
+    classDef human fill:#FEF3C7,stroke:#D97706,color:#92400E
+    class OM center
+    class IB mail
+    class AS agent
+    class GH code
+    class U human
 ```
 
 **一个任务只由一个执行方负责：** Inboxtend 继续管理邮件任务及已有 Agent 运行；AgentSteers 只执行另外明确授权的任务。未来所有控制操作都必须由服务端检查用户权限、任务版本、幂等标识及审计记录，并对执行结果不确定的情况进行核对，避免重复执行。GitHub 默认仍然只读，修改仓库必须单独授权。
