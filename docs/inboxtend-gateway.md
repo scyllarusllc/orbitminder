@@ -55,3 +55,17 @@ INBOXTEND_ACCOUNT_KEY=<private source installation/account key>
 ```
 
 Call `ProjectStore(absolute_path).initialize()` in a controlled initialization path before using the cache endpoint. Only deploy behind TLS with restricted server-to-server callers; one shared API bearer token does **not** provide multi-user isolation by itself. No live integration, initialization, migration execution, tests, or runtime verification has been performed for this milestone. Existing Gmail and Agent execution flows are unchanged.
+
+## Explicit server sync command / 服务端手动同步命令
+
+The operator can invoke the new source-only CLI after private configuration:
+
+```bash
+python3 -m orbitminder.sync_inboxtend --page-limit 50 --max-pages 100
+```
+
+Required server-side environment: `ORBITMINDER_DB_PATH` (absolute path), `ORBITMINDER_OWNER_ID` (the **same authenticated Google subject** used by the Next.js Dashboard), `INBOXTEND_ACCOUNT_KEY` (same key as the Dashboard), `INBOXTEND_READONLY_BASE_URL` (HTTPS origin only), and `INBOXTEND_READONLY_TOKEN` (matches the upstream owner-scoped token). The CLI initializes existing additive migrations, fetches version-1 pages, validates them and imports into the owner-scoped SQLite snapshot table. It reports non-sensitive counts on success and a generic error on failure.
+
+配置上述服务端私有变量后，管理员可以执行命令手动同步。特别注意：`ORBITMINDER_OWNER_ID` 必须和 Next.js 登录会话中的 Google 用户标识一致，否则页面读不到已导入任务。同步命令不会保存邮件正文或附件，也不会执行 Agent。
+
+**Not automatic / 非自动功能：** Dashboard reload reads cache only. There is no public sync trigger, no automatic scheduler and no production verification. The last sync state and checked count appear in the task panel. Per the owner's current direction, no tests or live integration were run for this code change.
