@@ -72,6 +72,7 @@ export default function InboxtendTasks() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState("all");
   const [eventMode, setEventMode] = useState<"all" | "real" | "mock">("all");
+  const [reviewOnly, setReviewOnly] = useState(false);
 
   const projects = useMemo(() => {
     const summaries = new Map<string, { total: number; open: number; high: number }>();
@@ -140,9 +141,12 @@ export default function InboxtendTasks() {
     });
   }, [snapshot]);
 
+  const reviewIds = useMemo(() => new Set(agentDiscrepancies.map(item => item.task.external_id)), [agentDiscrepancies]);
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     const rows = (snapshot?.items ?? []).filter(task =>
+      (!reviewOnly || reviewIds.has(task.external_id)) &&
       (statusFilter === "all" || task.status === statusFilter) &&
       (projectFilter === "all" || (task.project_label?.trim() || "Uncategorized") === projectFilter) &&
       (agentFilter === "all" || (agentFilter === "assigned"
@@ -169,7 +173,7 @@ export default function InboxtendTasks() {
       if (!Number.isNaN(newer) && newer !== 0) return newer;
       return a.external_id.localeCompare(b.external_id);
     });
-  }, [snapshot, statusFilter, agentFilter, sortBy, query, projectFilter]);
+  }, [snapshot, statusFilter, agentFilter, sortBy, query, projectFilter, reviewOnly, reviewIds]);
 
   async function load() {
     setState("loading");
@@ -228,6 +232,11 @@ export default function InboxtendTasks() {
           Comparing cached task claims to separately stored job snapshots. Differences can reflect delays,
           different status vocabularies, or incomplete history; they do not prove an execution failure.
         </p>
+        <label className="mt-3 flex items-center gap-2 text-xs text-slate-200">
+          <input type="checkbox" checked={reviewOnly} onChange={event => setReviewOnly(event.target.checked)}
+            className="accent-cyan-400" />
+          Show only review items in the task list
+        </label>
         {agentDiscrepancies.length === 0 ? <p className="mt-2 text-xs text-slate-400">
           No missing or differing matched AgentSteers snapshots among loaded tasks. This does not verify execution.
         </p> : <ul className="mt-3 space-y-2 text-xs">
@@ -380,6 +389,13 @@ export default function InboxtendTasks() {
           {(task.assigned_agent || task.agent_status) && <p className="mt-2 text-xs text-violet-200">
             Agent: {task.assigned_agent ?? "Unassigned"} · status: {task.agent_status ?? "unknown"}
           </p>}
+          {(() => {
+            const issue = agentDiscrepancies.find(item => item.task.external_id === task.external_id);
+            return issue ? <p role="status" className="mt-2 text-xs text-amber-200">
+              Needs review: {issue.kind === "missing" ? "No matching stored AgentSteers job" :
+                `Task says "${task.agent_status}", stored job says "${issue.stored?.state}"`}
+            </p> : null;
+          })()}
           <button type="button"
             aria-expanded={expandedId === task.external_id}
             aria-controls={`task-detail-${task.external_id}`}
