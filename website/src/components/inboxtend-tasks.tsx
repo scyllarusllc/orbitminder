@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Task = {
   external_id: string;
@@ -30,9 +30,48 @@ function safeHttpsLink(value: string | null): boolean {
   try { return new URL(value).protocol === "https:"; } catch { return false; }
 }
 
+const rank: Record<string, number> = { high: 0, medium: 1, low: 2 };
+const taskStatuses = ["all", "new", "in_progress", "waiting", "done"] as const;
+type TaskStatusFilter = typeof taskStatuses[number];
+type AgentFilter = "all" | "assigned" | "unassigned";
+
 export default function InboxtendTasks() {
   const [state, setState] = useState<"loading" | "ready" | "unavailable">("loading");
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [statusFilter, setStatusFilter] = useState<TaskStatusFilter>("all");
+  const [agentFilter, setAgentFilter] = useState<AgentFilter>("all");
+  const [sortBy, setSortBy] = useState<"priority" | "due" | "updated">("priority");
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase();
+    const rows = (snapshot?.items ?? []).filter(task =>
+      (statusFilter === "all" || task.status === statusFilter) &&
+      (agentFilter === "all" || (agentFilter === "assigned"
+        ? Boolean(task.assigned_agent) : !task.assigned_agent)) &&
+      (!needle || task.title.toLocaleLowerCase().includes(needle) ||
+        (task.project_label ?? "").toLocaleLowerCase().includes(needle))
+    );
+    const byDue = (task: Task) => {
+      const value = task.due_at ?? task.due_date;
+      if (!value) return Number.POSITIVE_INFINITY;
+      const time = Date.parse(value);
+      return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time;
+    };
+    return [...rows].sort((a, b) => {
+      if (sortBy === "priority") {
+        const p = (rank[a.priority] ?? 3) - (rank[b.priority] ?? 3);
+        if (p !== 0) return p;
+      }
+      if (sortBy === "due" || sortBy === "priority") {
+        const d = byDue(a) - byDue(b);
+        if (!Number.isNaN(d) && d !== 0) return d;
+      }
+      const newer = Date.parse(b.source_updated_at) - Date.parse(a.source_updated_at);
+      if (!Number.isNaN(newer) && newer !== 0) return newer;
+      return a.external_id.localeCompare(b.external_id);
+    });
+  }, [snapshot, statusFilter, agentFilter, sortBy, query]);
 
   async function load() {
     setState("loading");
@@ -73,11 +112,43 @@ export default function InboxtendTasks() {
       {snapshot.sync_state !== "succeeded" && <p className="mt-2 text-sm text-amber-200">
         Cached data may be incomplete or stale. {snapshot.last_error ? "Latest sync: " + snapshot.last_error : ""}
       </p>}
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Task filters">
+        <label className="text-xs text-slate-300">Search tasks
+          <input aria-label="Search tasks" value={query} onChange={e => setQuery(e.target.value)}
+            placeholder="Title or project" className="mt-1 block w-full rounded-lg border border-white/20 bg-[#11182b] px-3 py-2 text-sm text-white" />
+        </label>
+        <label className="text-xs text-slate-300">Task status
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as TaskStatusFilter)}
+            className="mt-1 block w-full rounded-lg border border-white/20 bg-[#11182b] px-3 py-2 text-sm text-white">
+            {taskStatuses.map(v => <option key={v} value={v}>{v === "all" ? "All statuses" : v.replaceAll("_", " ")}</option>)}
+          </select>
+        </label>
+        <label className="text-xs text-slate-300">Agent assignment
+          <select value={agentFilter} onChange={e => setAgentFilter(e.target.value as AgentFilter)}
+            className="mt-1 block w-full rounded-lg border border-white/20 bg-[#11182b] px-3 py-2 text-sm text-white">
+            <option value="all">All tasks</option><option value="assigned">Assigned</option><option value="unassigned">Unassigned</option>
+          </select>
+        </label>
+        <label className="text-xs text-slate-300">Sort by
+          <select value={sortBy} onChange={e => setSortBy(e.target.value as "priority" | "due" | "updated")}
+            className="mt-1 block w-full rounded-lg border border-white/20 bg-[#11182b] px-3 py-2 text-sm text-white">
+            <option value="priority">Priority, then due date</option><option value="due">Earliest due date</option>
+            <option value="updated">Recently updated</option>
+          </select>
+        </label>
+      </div>
+      <p className="mt-3 text-xs text-slate-400" role="status">
+        Showing {filtered.length} of {snapshot.items.length} cached tasks (up to the first 100 loaded).
+        Filters and sorting affect only this local list.
+      </p>
+      {snapshot.items.length > 0 && filtered.length === 0 && <p className="mt-4 text-sm text-slate-300">
+        No cached tasks match these filters.
+      </p>}
       {snapshot.items.length === 0 && <p className="mt-4 text-sm text-slate-300">
         No cached tasks for this account. No live source check was performed.
       </p>}
       <ul className="mt-4 space-y-3">
-        {snapshot.items.map(task => <li key={task.external_id} className="rounded-xl border border-white/10 p-4">
+        {filtered.map(task => <li key={task.external_id} className="rounded-xl border border-white/10 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <strong className="break-words">{task.title}</strong>
             <span className="rounded-full border border-white/20 px-2.5 py-1 text-xs text-slate-200">{task.status}</span>
