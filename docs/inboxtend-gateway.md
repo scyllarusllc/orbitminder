@@ -40,3 +40,18 @@ Inboxtend now contains the versioned read-only route in source at [`integration_
 Inboxtend 源代码已加入只读接口，配置说明见上方 Inboxtend 文档。OrbitMinder 的 `INBOXTEND_READONLY_TOKEN` 必须匹配 Inboxtend 的 `INBOX_TEND_INTEGRATION_TOKEN`。浏览器不可持有任一服务端令牌。
 
 **Current gate / 当前阻塞：** source is committed but no deployed HTTPS origin, private tokens or actual live task response were available in this development session. No end-to-end run or production verification can be claimed. Follow the existing no-automated-test rule; manually check an authorized request, an unauthorized request, pagination, owner restriction, and failure handling after private configuration.
+
+## Cached task snapshots (source implementation, 2026-11-21) / 任务快照缓存
+
+An additive SQLite v2 migration (`migrations/0002_inboxtend_tasks.sql`) adds `inboxtend_tasks` without replacing existing tables. `ProjectStore.initialize()` applies unapplied migrations; `save_inboxtend_tasks()` saves a validated batch atomically with revision-aware upserts. `import_task_summaries()` uses this storage after complete pagination. The authenticated `GET /api/v1/inboxtend/cached-tasks?limit=100` returns cached metadata and sync state; it does not automatically trigger a live fetch.
+
+新增 SQLite v2 迁移（`inboxtend_tasks` 表），不重建旧表。任务导入完成分页读取后，将完整摘要以原子事务保存；旧版本不会覆盖更新的版本。受保护的 `GET /api/v1/inboxtend/cached-tasks` 可读取缓存及同步状态，但不会自动触发同步。
+
+Set these additional **server-only** values / 另需配置仅服务端环境变量：
+```text
+ORBITMINDER_DB_PATH=/absolute/private/path/orbitminder.sqlite3
+ORBITMINDER_OWNER_ID=<trusted authenticated owner identifier>
+INBOXTEND_ACCOUNT_KEY=<private source installation/account key>
+```
+
+Call `ProjectStore(absolute_path).initialize()` in a controlled initialization path before using the cache endpoint. Only deploy behind TLS with restricted server-to-server callers; one shared API bearer token does **not** provide multi-user isolation by itself. No live integration, initialization, migration execution, tests, or runtime verification has been performed for this milestone. Existing Gmail and Agent execution flows are unchanged.
