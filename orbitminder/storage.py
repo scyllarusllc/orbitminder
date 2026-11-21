@@ -16,6 +16,7 @@ MIGRATIONS = {
     1: Path(__file__).resolve().parent.parent / "migrations" / "0001_initial.sql",
     2: Path(__file__).resolve().parent.parent / "migrations" / "0002_inboxtend_tasks.sql",
     3: Path(__file__).resolve().parent.parent / "migrations" / "0003_agent_activity_events.sql",
+    4: Path(__file__).resolve().parent.parent / "migrations" / "0004_agent_event_provenance.sql",
 }
 
 
@@ -349,7 +350,7 @@ class ProjectStore:
             return [dict(row) for row in db.execute(
                 """SELECT e.id,t.external_id AS task_id,
                           e.external_job_id AS job_id,e.state,e.mode,
-                          e.observed_at,e.recorded_at
+                          e.observed_at,e.recorded_at,e.verification_method
                    FROM agent_activity_events AS e
                    JOIN inboxtend_tasks AS t
                      ON t.owner_id=e.owner_id
@@ -360,7 +361,7 @@ class ProjectStore:
                 (owner_id, account_key, limit),
             )]
 
-    def import_agent_observations(self, owner_id, observations):
+    def import_agent_observations(self, owner_id, observations, *, verification_method="operator_reviewed"):
         """Atomically ingest operator-reviewed observations for existing jobs.
 
         Replays of identical source event keys are no-ops; divergent replays
@@ -368,6 +369,8 @@ class ProjectStore:
         provenance must be checked before invoking this method.
         """
         owner_id = _owner(owner_id)
+        if verification_method not in ("operator_reviewed", "shared_key_hmac"):
+            raise ValueError("unsupported event verification method")
         if not isinstance(observations, list) or not 1 <= len(observations) <= 500:
             raise ValueError("expected 1 to 500 validated observations")
         prepared = []
@@ -411,23 +414,25 @@ class ProjectStore:
                 if parent["mode"] != mode:
                     raise ValueError("observation mode conflicts with stored job")
                 existing = db.execute(
-                    """SELECT state,mode,observed_at FROM agent_activity_events
+                    """SELECT state,mode,observed_at,verification_method FROM agent_activity_events
                        WHERE owner_id=? AND provider='agentsteers'
                          AND external_job_id=? AND event_key=?""",
                     (owner_id, job, key),
                 ).fetchone()
                 if existing:
-                    if (existing["state"], existing["mode"], existing["observed_at"]) != (
-                        state, mode, observed
+                    if (existing["state"], existing["mode"], existing["observed_at"],
+                        existing["verification_method"]) != (
+                        state, mode, observed, verification_method
                     ):
                         raise ValueError("conflicting observation replay")
                     continue
                 db.execute(
                     """INSERT INTO agent_activity_events (
                         id,owner_id,provider,external_job_id,event_key,
-                        state,mode,observed_at,recorded_at
-                    ) VALUES (?,?,'agentsteers',?,?,?,?,?,?)""",
-                    (uuid4().hex, owner_id, job, key, state, mode, observed, _now()),
+                        state,mode,observed_at,recorded_at,verification_method
+                    ) VALUES (?,?,'agentsteers',?,?,?,?,?,?,?)""",
+                    (uuid4().hex, owner_id, job, key, state, mode, observed,
+                     _now(), verification_method),
                 )
                 inserted += 1
         return {"accepted": len(prepared), "inserted": inserted}
