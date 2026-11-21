@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from .storage import ProjectStore
+from .agent_event_signing import verify_envelope
 
 
 def main() -> int:
@@ -33,12 +34,9 @@ def main() -> int:
         if source.stat().st_size > 512_000:
             raise ValueError("observation input too large")
         payload = json.loads(source.read_text(encoding="utf-8"))
-        if (not isinstance(payload, dict) or set(payload) != {"schema_version", "observations"}
-                or type(payload["schema_version"]) is not int or payload["schema_version"] != 1):
-            raise ValueError("invalid observation import schema")
-        items = payload["observations"]
-        if not isinstance(items, list):
-            raise ValueError("observations must be an array")
+        items = verify_envelope(
+            payload, owner, os.environ.get("ORBITMINDER_AGENT_EVENT_SIGNING_KEY")
+        )
         counts = ProjectStore(db).import_agent_observations(owner, items)
     except (OSError, UnicodeError, ValueError, TypeError, json.JSONDecodeError):
         print("Observation import rejected; no source data printed", file=sys.stderr)
