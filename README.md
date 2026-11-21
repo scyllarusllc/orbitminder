@@ -113,6 +113,8 @@ Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006–009 s
 
 **2026-11-21 status reconciliation source update:** The read-only cached task Dashboard now highlights AgentSteers job references with no corresponding stored job snapshot, and task-reported Agent statuses differing from stored job states. This is a review queue, not proof of failure: timestamps and status vocabularies can differ. The section is limited to loaded cache records. No Agent actions, tests, integrations, or deployment performed.
 
+**2026-11-21 Agent review workflow UI:** The cached-task Dashboard now offers a “Show only review items” toggle, filtering loaded tasks to those with missing stored AgentSteers jobs or differing task-reported and stored job states. Affected task cards display the review reason inline. This is read-only local snapshot comparison, not a verified failure or live sync. No tests, integration, or deployment performed.
+
 ### Next milestone — durable, trustworthy project data (P0)
 
 - [ ] **OM-006 — Define normalized models (SOURCE IMPLEMENTED, NOT LIVE-VERIFIED):** owner-scoped SQLite tables for project, source record, sync run, follow-up and agent activity are now in [`migrations/0001_initial.sql`](migrations/0001_initial.sql), with semantics in [`docs/data-model.md`](docs/data-model.md). **Remaining before checking complete:** manually verify migration and owner isolation in an authorized environment; schema is not yet deployed.
@@ -269,6 +271,9 @@ python3 -m orbitminder.cli --github-owner scyllarusllc --github-activity --githu
 不启用 `--github-activity` 时，只读取仓库元数据，不读取 PR／Issue，也不判断实际优先级。启用后，每个所检查的仓库最多额外执行三类 GitHub 只读请求；默认只检查前 30 个返回仓库中最多 10 个未归档仓库。列表达到 100 条可能未完整分页，因此计数可能只是下限。API 出错会报错，不应误报为空。未提供 Token 时只读取公共仓库；Token 从环境变量读取，不写入文件或日志。已有的 ChatGPT “Mission Control” 定时任务与此独立，不做修改。
 
 ### 📋 开发进度与待办
+
+**2026-11-21 Agent 待核对任务视图：** Dashboard 新增“仅显示待核对任务”筛选，方便集中查看缺少已存 AgentSteers Job 或任务上报状态与本地 Job 状态不一致的任务；任务卡片直接显示差异原因。只对已载入的本地缓存进行只读核对，不代表已确认执行失败，未运行测试、联调或部署。
+
 
 **2026-11-21 Agent 状态一致性：** Dashboard 新增只读待核对列表，提示任务引用了 AgentSteers Job 却没有匹配的本地快照，或任务上报状态与 Job 已存状态不一致。差异不自动判定为执行失败，可能来自不同更新时间或状态词汇。只针对已载入缓存；未执行 Agent、测试、联调或部署。
 
