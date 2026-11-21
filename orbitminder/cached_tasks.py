@@ -26,12 +26,14 @@ def main():
         store = ProjectStore(args.db)
         records = store.list_inboxtend_tasks(args.owner, args.account, limit=args.limit)
         run = store.latest_sync(args.owner, provider="inboxtend", account_key=args.account)
+        activities = store.list_inboxtend_agent_activity(args.owner, args.account, limit=200)
     except Exception:
         print("Cached task snapshot unavailable", file=sys.stderr)
         return 1
     print(json.dumps({
         "mode": "cached_inboxtend_tasks",
         "items": records,
+        "agent_activities": activities,
         "sync_state": run["state"] if run else "unchecked",
         "last_checked_at": run["finished_at"] if run else None,
         "checked_count": run["checked_count"] if run else None,
