@@ -114,3 +114,9 @@ The signed JSON envelope has exactly four top-level fields: `schema_version` (in
 Both single-event and batch observation writes now share the same strict path: a matching owner-scoped stored AgentSteers job is required, the stored `mock`/`real` mode must match, and the event key cannot be reused with altered content. Future-dated observation timestamps are rejected. Previously stored events are not rewritten and no Agent state transitions or dispatches are inferred from imported observations.
 
 单条与批量事件写入现在都使用同一套严格校验：必须存在相同用户下的 AgentSteers Job，`mock`/`real` 模式必须匹配；同一事件标识不能对应不同内容，未来时间戳也会被拒绝。不会修改旧事件、推断 Agent 状态迁移或触发执行。以上均为代码提交，没有运行测试或联调。
+
+## Stored event provenance / 已存事件来源标记
+
+Migration `0004_agent_event_provenance.sql` adds `verification_method` to each persisted event. Existing records are marked `legacy_unknown`, never automatically promoted. Operator-reviewed unsigned imports are labeled `operator_reviewed`; imports that pass configured HMAC verification are labeled `shared_key_hmac`. The same event key cannot be silently replayed with a different provenance label. The Dashboard displays these labels with a warning that shared-key HMAC **does not authenticate AgentSteers as the source**. This labels local verification performed by OrbitMinder, not an end-to-end attestation.
+
+v4 迁移为已存事件增加来源标记：旧记录为 `legacy_unknown`，人工审核未签名文件为 `operator_reviewed`，通过配置密钥 HMAC 校验的文件为 `shared_key_hmac`。即使通过共享密钥签名，也**不能直接认定记录确由 AgentSteers 发出**。同一个事件 ID 的来源标记不一致时，会拒绝重放。以上仅代码提交，未运行测试、联调或部署。
