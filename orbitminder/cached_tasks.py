@@ -34,6 +34,8 @@ def main():
         "items": records,
         "sync_state": run["state"] if run else "unchecked",
         "last_checked_at": run["finished_at"] if run else None,
+        "checked_count": run["checked_count"] if run else None,
+        "last_error": run["last_error"] if run else None,
         "count": len(records),
         "note": "Saved snapshot, not a live task check.",
     }, ensure_ascii=False))
