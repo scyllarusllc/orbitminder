@@ -1,5 +1,6 @@
 import ProjectActivity from "@/components/project-activity";
 import SavedProjects from "@/components/saved-projects";
+import InboxtendTasks from "@/components/inboxtend-tasks";
 import GmailConnection from "@/components/gmail-connection";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -45,6 +46,7 @@ export default async function Dashboard() {
         </div>
         <GmailConnection />
         <SavedProjects />
+        <InboxtendTasks />
         <ProjectActivity />
         <p className="mt-8 text-xs text-slate-400">No sample values are presented as live user data.</p>
       </div>
