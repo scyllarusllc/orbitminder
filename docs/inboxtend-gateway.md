@@ -69,3 +69,30 @@ Required server-side environment: `ORBITMINDER_DB_PATH` (absolute path), `ORBITM
 配置上述服务端私有变量后，管理员可以执行命令手动同步。特别注意：`ORBITMINDER_OWNER_ID` 必须和 Next.js 登录会话中的 Google 用户标识一致，否则页面读不到已导入任务。同步命令不会保存邮件正文或附件，也不会执行 Agent。
 
 **Not automatic / 非自动功能：** Dashboard reload reads cache only. There is no public sync trigger, no automatic scheduler and no production verification. The last sync state and checked count appear in the task panel. Per the owner's current direction, no tests or live integration were run for this code change.
+
+## Reviewed AgentSteers observation import / 经审核的 Agent 事件导入
+
+An optional **operator-only** importer accepts a private local JSON document and writes a bounded batch of independently observed events into the additive v3 `agent_activity_events` table. It requires `ORBITMINDER_OWNER_ID` and `ORBITMINDER_DB_PATH` in the operator's private environment. The database must already have migrations applied and the matching `agent_activities` job record (including its `mock` or `real` mode). This does **not** connect to AgentSteers, verify a signature, or certify an event's authenticity: review provenance before importing. Do not feed untrusted emails or model output directly to this command.
+
+```json
+{
+  "schema_version": 1,
+  "observations": [
+    {
+      "external_job_id": "EXISTING_VERIFIED_JOB_ID",
+      "event_key": "STABLE_SOURCE_EVENT_ID",
+      "state": "running",
+      "mode": "real",
+      "observed_at": "2026-11-21T12:00:00Z"
+    }
+  ]
+}
+```
+
+```bash
+python3 -m orbitminder.import_agent_events --file /absolute/private/path/reviewed-events.json
+```
+
+A batch contains 1–500 events, with a 512 KB file size cap. The import is atomic: unknown jobs, mismatched modes, invalid times, or conflicting replays reject the whole batch. Identical replays are idempotent. The existing Dashboard timeline reads these stored events separately from the current per-job status snapshots. No API writes, browser submission, background schedule, Agent dispatch, tests, deployment or live integration were added.
+
+可选的**仅管理员使用**的本地 JSON 导入命令，可将人工确认来源的 AgentSteers 事件批量写入 v3 事件表。要求任务所属用户与已存 Job 完全匹配，`real` / `mock` 模式一致；重复事件不会重复存入，冲突则整批拒绝。**此命令不能证明文件来源真实**，必须由管理员先确认记录真实性。它不提供浏览器写入接口、不自动执行 Agent，也没有进行运行测试或联调。
