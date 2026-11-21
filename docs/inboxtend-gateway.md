@@ -72,7 +72,7 @@ Required server-side environment: `ORBITMINDER_DB_PATH` (absolute path), `ORBITM
 
 ## Reviewed AgentSteers observation import / 经审核的 Agent 事件导入
 
-An optional **operator-only** importer accepts a private local JSON document and writes a bounded batch of independently observed events into the additive v3 `agent_activity_events` table. It requires `ORBITMINDER_OWNER_ID` and `ORBITMINDER_DB_PATH` in the operator's private environment. The database must already have migrations applied and the matching `agent_activities` job record (including its `mock` or `real` mode). This does **not** connect to AgentSteers, verify a signature, or certify an event's authenticity: review provenance before importing. Do not feed untrusted emails or model output directly to this command.
+An optional **operator-only** importer accepts a private local JSON document and writes a bounded batch of independently observed events into the additive v3 `agent_activity_events` table. It requires `ORBITMINDER_OWNER_ID` and `ORBITMINDER_DB_PATH` in the operator's private environment. The database must already have migrations applied and the matching `agent_activities` job record (including its `mock` or `real` mode). This does **not** connect to AgentSteers or certify an event's authenticity: review provenance before importing. Do not feed untrusted emails or model output directly to this command.
 
 ```json
 {
@@ -96,3 +96,15 @@ python3 -m orbitminder.import_agent_events --file /absolute/private/path/reviewe
 A batch contains 1–500 events, with a 512 KB file size cap. The import is atomic: unknown jobs, mismatched modes, invalid times, or conflicting replays reject the whole batch. Identical replays are idempotent. The existing Dashboard timeline reads these stored events separately from the current per-job status snapshots. No API writes, browser submission, background schedule, Agent dispatch, tests, deployment or live integration were added.
 
 可选的**仅管理员使用**的本地 JSON 导入命令，可将人工确认来源的 AgentSteers 事件批量写入 v3 事件表。要求任务所属用户与已存 Job 完全匹配，`real` / `mock` 模式一致；重复事件不会重复存入，冲突则整批拒绝。**此命令不能证明文件来源真实**，必须由管理员先确认记录真实性。它不提供浏览器写入接口、不自动执行 Agent，也没有进行运行测试或联调。
+
+## Optional signed event envelopes / 可选签名事件文件
+
+Set the private server/operator environment variable `ORBITMINDER_AGENT_EVENT_SIGNING_KEY` to a dedicated random secret of **at least 32 UTF-8 bytes** to **require HMAC-SHA256 on every event import**. The importer rejects unsigned, wrongly signed, wrongly scoped, and unrecognized-field envelopes when this key is present. Do not put the key in the JSON file, Git, or a browser.
+
+设置私有环境变量 `ORBITMINDER_AGENT_EVENT_SIGNING_KEY` 为至少 32 字节的随机密钥，即强制每次事件导入执行 HMAC-SHA256 校验。启用后无签名、签名不符、用户标识不符或含额外字段的文件都会被拒绝。密钥不得放入 JSON 文件、Git 或浏览器。
+
+The signed JSON envelope has exactly four top-level fields: `schema_version` (integer 1), `owner_id` (same operator-configured `ORBITMINDER_OWNER_ID`), `observations` (same array as above), and `signature` (64 lowercase hex characters). Compute the HMAC using the signing key's UTF-8 bytes and **exact canonical bytes** produced by `orbitminder.agent_event_signing.canonical_observations(owner_id, observations)`: sorted JSON keys, no extra spaces, UTF-8, and non-ASCII characters unescaped. A trusted producer must create this signature outside the untrusted transport.
+
+签名 JSON 顶层需恰好有 `schema_version`、`owner_id`、`observations` 和 `signature` 四个字段。由可信生产方使用 `canonical_observations` 的标准化 UTF-8 字节签名，输出 64 位小写十六进制 HMAC 值，接收方按固定 owner 验证。
+
+**Security qualification:** HMAC proves only possession of the shared key, **not** that AgentSteers itself issued a particular event; configure key distribution and event provenance separately. Without this environment variable, the older unsigned *manually reviewed* format remains accepted. No live AgentSteers connector, runtime test, or deployment verification was performed.
