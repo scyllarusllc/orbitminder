@@ -291,3 +291,32 @@ class ProjectStore:
                    ORDER BY source_updated_at DESC,external_id LIMIT ?""",
                 (owner_id, account_key, limit),
             )]
+
+    def list_inboxtend_agent_activity(self, owner_id, account_key, *, limit=100):
+        """Match cached AgentSteers job IDs to stored activity within one owner.
+
+        A task's reported job ID alone is not proof of execution. Only an
+        independently stored agent_activities row is returned. No mailbox data,
+        approval credentials, or private errors are returned to the web UI.
+        """
+        owner_id = _owner(owner_id)
+        if not isinstance(account_key, str) or not account_key.strip():
+            raise ValueError("account_key is required")
+        if type(limit) is not int or not 1 <= limit <= 500:
+            raise ValueError("invalid limit")
+        with self._connect() as db:
+            rows = db.execute(
+                """SELECT t.external_id AS task_id, a.external_job_id AS job_id,
+                          a.provider, a.mode, a.state, a.observed_at, a.updated_at
+                   FROM inboxtend_tasks AS t
+                   JOIN agent_activities AS a
+                     ON a.owner_id=t.owner_id
+                    AND a.provider='agentsteers'
+                    AND a.external_job_id=t.agent_job_id
+                   WHERE t.owner_id=? AND t.account_key=?
+                     AND t.executor='agentsteers'
+                     AND t.agent_job_id IS NOT NULL
+                   ORDER BY a.updated_at DESC,t.external_id LIMIT ?""",
+                (owner_id, account_key, limit),
+            ).fetchall()
+            return [dict(row) for row in rows]
