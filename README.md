@@ -89,6 +89,8 @@ Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006–009 s
 - [x] **OM-004 — On-demand GitHub dashboard:** authenticated API backed by the Python CLI and a manual refresh UI.
 - [x] **OM-005 — Dashboard activity sections:** display sampled GitHub counts, next actions, waiting/blocked/due lists and unverified sources (`a1bc347`). No live deployment claim.
 
+**2026-11-21 prototype update:** Added `orbitminder/inboxtend_contract.py` with strict SQLModel/Pydantic validation for the versioned Inboxtend task-summary feed (metadata only; no mail bodies, attachments, credentials, or task execution). Added `pyproject.toml` declaring FastAPI, SQLModel and Typer dependencies. **Contract only:** no live Inboxtend connection, FastAPI route, database migration, or production verification yet. Existing SQLite tables are unchanged.
+
 ### Next milestone — durable, trustworthy project data (P0)
 
 - [ ] **OM-006 — Define normalized models (SOURCE IMPLEMENTED, NOT LIVE-VERIFIED):** owner-scoped SQLite tables for project, source record, sync run, follow-up and agent activity are now in [`migrations/0001_initial.sql`](migrations/0001_initial.sql), with semantics in [`docs/data-model.md`](docs/data-model.md). **Remaining before checking complete:** manually verify migration and owner isolation in an authorized environment; schema is not yet deployed.
@@ -245,6 +247,8 @@ python3 -m orbitminder.cli --github-owner scyllarusllc --github-activity --githu
 不启用 `--github-activity` 时，只读取仓库元数据，不读取 PR／Issue，也不判断实际优先级。启用后，每个所检查的仓库最多额外执行三类 GitHub 只读请求；默认只检查前 30 个返回仓库中最多 10 个未归档仓库。列表达到 100 条可能未完整分页，因此计数可能只是下限。API 出错会报错，不应误报为空。未提供 Token 时只读取公共仓库；Token 从环境变量读取，不写入文件或日志。已有的 ChatGPT “Mission Control” 定时任务与此独立，不做修改。
 
 ### 📋 开发进度与待办
+
+**2026-11-21 原型进展：** 新增 `orbitminder/inboxtend_contract.py`，使用 SQLModel/Pydantic 严格校验 Inboxtend 的版本化任务摘要（不包含邮件正文、附件、凭据，也不执行任务）；新增 `pyproject.toml` 声明 FastAPI、SQLModel、Typer 依赖。**目前仅完成数据契约**，尚未接通真实 Inboxtend 接口、FastAPI 路由或生产环境；现有 SQLite 表未修改。
 
 以下状态来自 README 在 **2026-11-19** 的进度记录；勾选只表示**源码已实现**，不等于已部署或验证。后续须依据真实提交与手动检查更新。
 
