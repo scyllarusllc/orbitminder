@@ -120,3 +120,11 @@ Both single-event and batch observation writes now share the same strict path: a
 Migration `0004_agent_event_provenance.sql` adds `verification_method` to each persisted event. Existing records are marked `legacy_unknown`, never automatically promoted. Operator-reviewed unsigned imports are labeled `operator_reviewed`; imports that pass configured HMAC verification are labeled `shared_key_hmac`. The same event key cannot be silently replayed with a different provenance label. The Dashboard displays these labels with a warning that shared-key HMAC **does not authenticate AgentSteers as the source**. This labels local verification performed by OrbitMinder, not an end-to-end attestation.
 
 v4 迁移为已存事件增加来源标记：旧记录为 `legacy_unknown`，人工审核未签名文件为 `operator_reviewed`，通过配置密钥 HMAC 校验的文件为 `shared_key_hmac`。即使通过共享密钥签名，也**不能直接认定记录确由 AgentSteers 发出**。同一个事件 ID 的来源标记不一致时，会拒绝重放。以上仅代码提交，未运行测试、联调或部署。
+
+## Full-snapshot task presence / 完整快照中的任务存在性
+
+The additive SQLite v5 migration adds `presence_state` and `last_seen_snapshot` to the private Inboxtend cache. **Only a fully validated, completed owner-scoped paginated task fetch** updates presence in the same transaction as task upserts. Received task IDs are `present`; previously cached IDs absent from that complete snapshot become `not_returned`, not deleted. Legacy records remain `unverified` until a complete sync. A failed/partial fetch never marks tasks absent. An older snapshot is rejected rather than rolling task presence back.
+
+The Dashboard excludes `not_returned` tasks from ordinary task counts by default, displays source-presence counts, and offers an explicit option to include missing-from-snapshot historical task rows. **Not returned is not proof of deletion:** source visibility, policy, filtering and account changes may also explain it. Existing Agent event history remains stored. This is code-only; no live integration, tests or deployment verification were run.
+
+SQLite v5 新增 `presence_state` 与 `last_seen_snapshot`。只有完整、通过校验的同一账号分页同步，才会在同一事务里更新任务存在性。已返回的任务标为 `present`，本轮未返回的旧任务标为 `not_returned`，不会删除。旧数据保持 `unverified`，失败或未完成的同步不会误标记缺失；比已处理快照更旧的快照将被拒绝。Dashboard 默认不把 `not_returned` 计入正常任务数量，但允许手动查看历史行。**未返回不等于已删除。** 以上代码尚未运行测试、联调或部署。
