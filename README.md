@@ -2,6 +2,9 @@
 
 **Your projects. Always in sight.**
 
+**Read in:** [English](#why) | [中文阅读](#中文说明chinese) · [中文项目简介](#项目简介与当前状态) · [中文开发规则](#开发流程与仓库规则中英文同步)
+
+
 OrbitMinder is an open-source, personal AI project command center. Its goal is to consolidate projects, follow-ups, deadlines and delegated agent work into one daily view.
 
 **Status (2026-11-19):** early, read-only prototype. The Python CLI supports local example JSON and GitHub repository/activity summaries. A Next.js website, Google sign-in code, a protected single-owner GitHub brief API, and an on-demand private dashboard are implemented in source, but production deployment, live Google OAuth and end-to-end behavior are **not verified**. Gmail OAuth connection, Calendar, full cross-source sync and real agent execution are not integrated; a read-only Gmail metadata adapter exists in source. GitHub activity is sampled; it does not prove task completion.
@@ -144,15 +147,15 @@ Maintained by Scyllarus LLC. Proposed website: orbitminder.com (domain ownership
 
 ### 项目简介与当前状态
 
-**OrbitMinder — 让所有项目始终一目了然。**
+**OrbitMinder — 让每个项目的进展清晰可见。**
 
-OrbitMinder 是一个开源的个人 AI 项目控制中心，目标是在一个日常视图中汇总项目、待跟进事项、截止日期和委派给 Agent 的工作。
+OrbitMinder 是一个开源的个人 AI 项目控制中心。它把分散在 GitHub、邮件任务和 AI Agent 中的进展汇总到同一个界面，帮助你快速了解项目变化、待办事项、截止日期，以及哪些工作正在等待处理。
 
 **截至 2026-11-19 的已记录状态：** 项目仍处于以只读为主的早期原型阶段。Python CLI 支持示例 JSON 和 GitHub 仓库／活动摘要。Next.js 网站、Google 登录代码、仅限所有者访问的 GitHub 简报 API 和按需刷新的私有 Dashboard 已在源码中实现，但生产部署、真实 Google OAuth 和端到端运行**尚未验证**。独立 Gmail 元数据只读适配器已有代码，但 Gmail 端到端同步、Calendar、跨来源完整同步及真实 Agent 执行尚未集成。GitHub 活动属于采样信息，不能据此断言任务已完成。
 
 ### 三项目架构（2026-11-21 决定）
 
-**统一监控、分布式执行：**
+**统一查看进度，各系统各司其职：**
 
 - **Inboxtend：** 独立的邮件与任务系统，继续负责邮箱、邮件正文与附件、原生邮件任务及其现有执行流程。
 - **OrbitMinder：** 可选的跨项目控制中心，汇总优先级、状态和来源链接；默认只读，不重新实现 Inboxtend 的邮箱同步。
@@ -164,11 +167,11 @@ OrbitMinder 是一个开源的个人 AI 项目控制中心，目标是在一个�
 
 ### 我们要解决的问题
 
-每天在一处回答：
+每天打开 OrbitMinder，就能回答三个问题：
 
-1. 与昨天相比，哪些项目发生了变化？
-2. 现在最值得做的三件事是什么？
-3. 什么任务正在等待、受阻或临近截止日期？
+1. 从昨天到现在，哪些项目有了新进展？
+2. 今天最应该优先处理哪三件事？
+3. 哪些任务正在等待回复、遇到阻碍，或者快到截止日期？
 
 ### 快速开始
 
