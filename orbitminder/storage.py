@@ -324,37 +324,19 @@ class ProjectStore:
 
     def append_agent_observation(self, owner_id, *, external_job_id, event_key,
                                  state, mode, observed_at):
-        """Append an independently observed state for an existing AgentSteers job.
+        """Append one verified observation through the batch replay checks.
 
-        A trusted importer must verify event_key and observed_at at the source.
-        Never synthesize events from cached task labels or an unverified job ID.
+        The caller must validate event origin; this never creates a job from
+        a task's unverified Job ID.
         """
-        owner_id = _owner(owner_id)
-        for value in (external_job_id, event_key, state, observed_at):
-            if not isinstance(value, str) or not value.strip():
-                raise ValueError("validated observation fields are required")
-        if mode not in ("mock", "real"):
-            raise ValueError("invalid execution mode")
-        timestamp = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
-        if timestamp.tzinfo is None:
-            raise ValueError("observed_at must be timezone-aware")
-        with self._connect() as db:
-            found = db.execute(
-                """SELECT 1 FROM agent_activities
-                   WHERE owner_id=? AND provider='agentsteers' AND external_job_id=?""",
-                (owner_id, external_job_id),
-            ).fetchone()
-            if not found:
-                raise ValueError("matching stored AgentSteers job required")
-            result = db.execute(
-                """INSERT OR IGNORE INTO agent_activity_events
-                   (id,owner_id,provider,external_job_id,event_key,state,
-                    mode,observed_at,recorded_at)
-                   VALUES (?,?,'agentsteers',?,?,?,?,?,?)""",
-                (uuid4().hex, owner_id, external_job_id, event_key,
-                 state, mode, timestamp.isoformat(), _now()),
-            )
-            return bool(result.rowcount)
+        result = self.import_agent_observations(owner_id, [{
+            "external_job_id": external_job_id,
+            "event_key": event_key,
+            "state": state,
+            "mode": mode,
+            "observed_at": observed_at,
+        }])
+        return result["inserted"] == 1
 
     def list_inboxtend_agent_events(self, owner_id, account_key, *, limit=100):
         """Show only persisted, same-owner job observations linked to cached tasks."""
