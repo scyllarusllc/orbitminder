@@ -27,7 +27,7 @@ def main() -> int:
             or not source.is_absolute() or not source.is_file()
             or not dest.is_absolute() or not dest.parent.is_dir()
             or dest.exists() or source == dest):
-        print("Trusted private input/output/database configuration required", file=sys.stderr)
+        print("Trusted private input/output configuration required", file=sys.stderr)
         return 1
     try:
         if source.stat().st_size > 512_000:
