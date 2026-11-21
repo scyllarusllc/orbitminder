@@ -13,6 +13,11 @@ type Task = {
   source_url: string | null;
   agent_status: string | null;
   assigned_agent: string | null;
+  review_state: string;
+  executor: string | null;
+  agent_job_id: string | null;
+  due_timezone: string | null;
+  observed_at: string;
   source_updated_at: string;
   revision: number;
 };
@@ -42,6 +47,7 @@ export default function InboxtendTasks() {
   const [agentFilter, setAgentFilter] = useState<AgentFilter>("all");
   const [sortBy, setSortBy] = useState<"priority" | "due" | "updated">("priority");
   const [query, setQuery] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
@@ -171,6 +177,23 @@ export default function InboxtendTasks() {
           {(task.assigned_agent || task.agent_status) && <p className="mt-2 text-xs text-violet-200">
             Agent: {task.assigned_agent ?? "Unassigned"} · status: {task.agent_status ?? "unknown"}
           </p>}
+          <button type="button"
+            aria-expanded={expandedId === task.external_id}
+            aria-controls={`task-detail-${task.external_id}`}
+            onClick={() => setExpandedId(current => current === task.external_id ? null : task.external_id)}
+            className="mt-3 rounded-lg border border-white/20 px-3 py-1.5 text-xs hover:border-white/40">
+            {expandedId === task.external_id ? "Hide details" : "View details"}
+          </button>
+          {expandedId === task.external_id && <div id={`task-detail-${task.external_id}`}
+            className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-slate-300 sm:grid-cols-2">
+            <p>Task ID: <span className="break-all text-white">{task.external_id}</span></p>
+            <p>Review: <span className="text-white">{task.review_state || "Unknown"}</span></p>
+            <p>Executor: <span className="text-white">{task.executor || "None"}</span></p>
+            <p>Agent job: <span className="break-all text-white">{task.agent_job_id || "None"}</span></p>
+            <p>Due timezone: <span className="text-white">{task.due_timezone || "Not set"}</span></p>
+            <p>Snapshot observed: <span className="text-white">{task.observed_at}</span></p>
+            <p className="sm:col-span-2 text-slate-400">Metadata only. This view cannot approve, reassign, or execute work.</p>
+          </div>}
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
             <span>Source updated {task.source_updated_at} · rev {task.revision}</span>
             {safeHttpsLink(task.source_url) && <a href={task.source_url!} target="_blank"
