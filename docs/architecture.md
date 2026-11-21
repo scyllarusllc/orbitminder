@@ -16,6 +16,16 @@ flowchart TB
   OM -.->|"Future approved actions"| IB
   AS["AgentSteers"] -->|"Execution status"| OM
   OM -.->|"Future approved delegation"| AS
+    classDef center fill:#DBEAFE,stroke:#2563EB,color:#1E3A8A,stroke-width:2px
+    classDef mail fill:#D1FAE5,stroke:#059669,color:#065F46
+    classDef agent fill:#F3E8FF,stroke:#9333EA,color:#581C87
+    classDef code fill:#F1F5F9,stroke:#64748B,color:#334155
+    classDef human fill:#FEF3C7,stroke:#D97706,color:#92400E
+    class OM center
+    class IB mail
+    class AS agent
+    class GH code
+    class U human
 ```
 
 **Legend:** Solid arrows = information received by OrbitMinder (data flow, not the direction of the HTTP request); dashed arrows = planned, approval-gated control operations. The diagram does **not** claim that Inboxtend, AgentSteers, or write APIs are integrated. The existing Inboxtend–AgentSteers bridge is mock-only in the reviewed repository.
