@@ -389,7 +389,10 @@ class ProjectStore:
             timestamp = datetime.fromisoformat(observed.replace("Z", "+00:00"))
             if timestamp.tzinfo is None:
                 raise ValueError("observation timestamp requires a timezone")
-            normalized = timestamp.astimezone(timezone.utc).isoformat()
+            normalized_dt = timestamp.astimezone(timezone.utc)
+            if normalized_dt > datetime.now(timezone.utc):
+                raise ValueError("future observation timestamp is not accepted")
+            normalized = normalized_dt.isoformat()
             if (job, key) in keys:
                 raise ValueError("duplicate event key in batch")
             keys.add((job, key))
