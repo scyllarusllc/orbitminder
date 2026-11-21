@@ -10,9 +10,9 @@ import json
 import os
 import sys
 from pathlib import Path
+from datetime import datetime, timezone
 
 from .agent_event_signing import sign_envelope
-from .storage import ProjectStore
 
 
 def main() -> int:
@@ -22,9 +22,8 @@ def main() -> int:
     args = parser.parse_args()
     owner = os.environ.get("ORBITMINDER_OWNER_ID", "").strip()
     secret = os.environ.get("ORBITMINDER_AGENT_EVENT_SIGNING_KEY")
-    db_path = Path(os.environ.get("ORBITMINDER_DB_PATH", ""))
     source, dest = args.file, args.output
-    if (not owner or not db_path.is_absolute() or not db_path.is_file()
+    if (not owner
             or not source.is_absolute() or not source.is_file()
             or not dest.is_absolute() or not dest.parent.is_dir()
             or dest.exists() or source == dest):
@@ -40,9 +39,8 @@ def main() -> int:
                 or payload["schema_version"] != 1):
             raise ValueError("expected reviewed unsigned v1 envelope")
         observations = payload["observations"]
-        # Validate observations against existing owner-scoped jobs without writing
-        # using the same checks as the importer? This command only signs locally
-        # reviewed input; the importing side remains authoritative for DB checks.
+        # Validate input shape before signing; importing remains responsible
+        # for checking existing owner-scoped jobs and event replay conflicts.
         if not isinstance(observations, list) or not 1 <= len(observations) <= 500:
             raise ValueError("invalid batch size")
         for item in observations:
@@ -54,6 +52,9 @@ def main() -> int:
                     for key in ("external_job_id", "event_key", "state", "observed_at"))
                     or item["mode"] not in ("mock", "real")):
                 raise ValueError("invalid observation values")
+            seen_at = datetime.fromisoformat(item["observed_at"].replace("Z", "+00:00"))
+            if seen_at.tzinfo is None or seen_at.astimezone(timezone.utc) > datetime.now(timezone.utc):
+                raise ValueError("invalid observation timestamp")
         if secret is None:
             raise ValueError("signing key not configured")
         envelope = sign_envelope(owner, observations, secret)
