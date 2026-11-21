@@ -17,6 +17,7 @@ MIGRATIONS = {
     2: Path(__file__).resolve().parent.parent / "migrations" / "0002_inboxtend_tasks.sql",
     3: Path(__file__).resolve().parent.parent / "migrations" / "0003_agent_activity_events.sql",
     4: Path(__file__).resolve().parent.parent / "migrations" / "0004_agent_event_provenance.sql",
+    5: Path(__file__).resolve().parent.parent / "migrations" / "0005_inboxtend_presence.sql",
 }
 
 
@@ -230,14 +231,34 @@ class ProjectStore:
                 all(item["verification_state"] == "verified" for item in records),
         }
 
-    def save_inboxtend_tasks(self, owner_id, account_key, tasks):
+    def save_inboxtend_tasks(self, owner_id, account_key, tasks, *, complete_snapshot_at=None):
         """Atomically cache validated task snapshots; older revisions never win."""
         owner_id = _owner(owner_id)
         if not isinstance(account_key, str) or not account_key.strip():
             raise ValueError("account_key is required")
+        snapshot_stamp = None
+        if complete_snapshot_at is not None:
+            if not isinstance(complete_snapshot_at, datetime) or complete_snapshot_at.tzinfo is None:
+                raise ValueError("complete source snapshot must have an aware timestamp")
+            snapshot_stamp = complete_snapshot_at.astimezone(timezone.utc).isoformat()
+            if len({task.id for task in tasks}) != len(tasks):
+                raise ValueError("duplicate task IDs in complete snapshot")
         now = _now()
         written = 0
         with self._connect() as db:
+            if snapshot_stamp is not None:
+                latest = db.execute(
+                    """SELECT MAX(last_seen_snapshot) FROM inboxtend_tasks
+                       WHERE owner_id=? AND account_key=?""",
+                    (owner_id, account_key),
+                ).fetchone()[0]
+                if latest and latest > snapshot_stamp:
+                    raise ValueError("older snapshot cannot replace newer presence")
+                db.execute(
+                    """UPDATE inboxtend_tasks SET presence_state='not_returned'
+                       WHERE owner_id=? AND account_key=?""",
+                    (owner_id, account_key),
+                )
             for task in tasks:
                 values = (
                     owner_id, account_key, task.id, task.title, task.project,
@@ -273,6 +294,13 @@ class ProjectStore:
                     """, values,
                 )
                 written += result.rowcount
+                if snapshot_stamp is not None:
+                    db.execute(
+                        """UPDATE inboxtend_tasks
+                           SET presence_state='present',last_seen_snapshot=?
+                           WHERE owner_id=? AND account_key=? AND external_id=?""",
+                        (snapshot_stamp, owner_id, account_key, task.id),
+                    )
         return written
 
     def list_inboxtend_tasks(self, owner_id, account_key, *, limit=100):
@@ -284,7 +312,7 @@ class ProjectStore:
             raise ValueError("invalid limit")
         with self._connect() as db:
             return [dict(row) for row in db.execute(
-                """SELECT external_id,title,project_label,status,priority,due_at,
+                """SELECT external_id,title,project_label,status,priority,presence_state,last_seen_snapshot,due_at,
                           due_date,due_timezone,source_url,review_state,assigned_agent,
                           executor,agent_job_id,agent_status,source_updated_at,
                           revision,observed_at
