@@ -93,6 +93,8 @@ Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006–009 s
 
 **2026-11-21 source update:** The Inboxtend v2 SQLite task snapshot model, owner-scoped cached task reader, authenticated Next.js API route, and read-only Dashboard panel have been committed. The panel shows saved task status, priority, dates and Agent labels; it does not fetch live data or dispatch jobs. **No automated tests, live integration, deployment, or runtime verification were performed.** Configure an initialized v2 database and private `INBOXTEND_ACCOUNT_KEY` to populate it.
 
+**2026-11-21 source milestone:** Added `python3 -m orbitminder.sync_inboxtend`, an operator-triggered, authenticated read-only task import using configured HTTPS and owner-scoped credentials. The cached Dashboard panel now includes sync counts and failure state. This is **code committed only**: no runtime tests, live integration, deployment, or background synchronization were performed. See `docs/inboxtend-gateway.md`.
+
 ### Next milestone — durable, trustworthy project data (P0)
 
 - [ ] **OM-006 — Define normalized models (SOURCE IMPLEMENTED, NOT LIVE-VERIFIED):** owner-scoped SQLite tables for project, source record, sync run, follow-up and agent activity are now in [`migrations/0001_initial.sql`](migrations/0001_initial.sql), with semantics in [`docs/data-model.md`](docs/data-model.md). **Remaining before checking complete:** manually verify migration and owner isolation in an authorized environment; schema is not yet deployed.
@@ -249,6 +251,9 @@ python3 -m orbitminder.cli --github-owner scyllarusllc --github-activity --githu
 不启用 `--github-activity` 时，只读取仓库元数据，不读取 PR／Issue，也不判断实际优先级。启用后，每个所检查的仓库最多额外执行三类 GitHub 只读请求；默认只检查前 30 个返回仓库中最多 10 个未归档仓库。列表达到 100 条可能未完整分页，因此计数可能只是下限。API 出错会报错，不应误报为空。未提供 Token 时只读取公共仓库；Token 从环境变量读取，不写入文件或日志。已有的 ChatGPT “Mission Control” 定时任务与此独立，不做修改。
 
 ### 📋 开发进度与待办
+
+**2026-11-21 源代码进展：** 新增管理员手动触发的 Inboxtend 只读同步命令 `python3 -m orbitminder.sync_inboxtend`，使用服务端 HTTPS 和指定用户的凭据。Dashboard 缓存面板增加同步数量及失败状态。**仅完成代码提交**：没有运行测试、真实联调、部署，也没有启用后台自动同步。详细配置见 `docs/inboxtend-gateway.md`。
+
 
 **2026-11-21 代码进展：** 已提交 Inboxtend v2 SQLite 任务快照存储、按用户隔离的读取程序、受登录保护的 Next.js API，以及 Dashboard 只读任务面板。面板展示缓存的任务状态、优先级、截止时间与 Agent 信息；不会自动同步邮件或派发任务。**按要求未运行自动化测试、真实联调或部署验证。** 使用前须配置已初始化的 v2 数据库与私有 `INBOXTEND_ACCOUNT_KEY`。
 
