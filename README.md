@@ -6,6 +6,12 @@ OrbitMinder is an open-source, personal AI project command center. Its goal is t
 
 **Status (2026-11-19):** early, read-only prototype. The Python CLI supports local example JSON and GitHub repository/activity summaries. A Next.js website, Google sign-in code, a protected single-owner GitHub brief API, and an on-demand private dashboard are implemented in source, but production deployment, live Google OAuth and end-to-end behavior are **not verified**. Gmail OAuth connection, Calendar, full cross-source sync and real agent execution are not integrated; a read-only Gmail metadata adapter exists in source. GitHub activity is sampled; it does not prove task completion.
 
+## Three-product architecture (decision 2026-11-21)
+
+**Unified monitoring, distributed execution:** Inboxtend remains the independent, already-in-use email and task system; OrbitMinder is an **optional** cross-project control center; AgentSteers supplies reusable execution for explicitly delegated jobs not already executed by Inboxtend. **Do not execute the same task twice.** OrbitMinder should integrate via a minimal authenticated **read-only Inboxtend task feed**, instead of rebuilding Gmail sync for this deployment. The existing standalone Gmail adapter remains optional source code, not a verified integration. The current Inboxtend ↔ AgentSteers repository bridge is **mock-only**, and OrbitMinder integration is not yet implemented.
+
+[Architecture diagram, ownership rules and integration milestones](docs/architecture.md).
+
 ## Why
 
 Your projects may live across GitHub, Gmail, calendar, personal planning and multiple AI agents. OrbitMinder is intended to answer:
