@@ -20,6 +20,32 @@ def canonical_observations(owner_id: str, observations: list) -> bytes:
     ).encode("utf-8")
 
 
+def sign_envelope(owner_id: str, observations: list, secret: str) -> dict:
+    """Sign reviewed observations for one trusted owner.
+
+    Signature means only that the configured secret signed these bytes.
+    Event origin must be authenticated independently before signing.
+    """
+    if not isinstance(owner_id, str) or not owner_id.strip():
+        raise ValueError("trusted owner required")
+    if not isinstance(secret, str) or not secret.strip():
+        raise ValueError("configured signing secret is empty")
+    if len(secret.encode("utf-8")) < 32:
+        raise ValueError("signing secret too short")
+    if not isinstance(observations, list) or not 1 <= len(observations) <= 500:
+        raise ValueError("expected 1 to 500 observations")
+    signature = hmac.new(
+        secret.encode("utf-8"), canonical_observations(owner_id, observations),
+        hashlib.sha256,
+    ).hexdigest()
+    return {
+        "schema_version": 1,
+        "owner_id": owner_id,
+        "observations": observations,
+        "signature": signature,
+    }
+
+
 def verify_envelope(payload: dict, owner_id: str, secret: str | None) -> list:
     """Fail closed for bad signatures whenever the operator enables signing.
 
