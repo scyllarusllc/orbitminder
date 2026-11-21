@@ -21,6 +21,8 @@ type Snapshot = {
   items: Task[];
   sync_state: string;
   last_checked_at: string | null;
+  checked_count: number | null;
+  last_error: string | null;
   count: number;
 };
 function safeHttpsLink(value: string | null): boolean {
@@ -65,10 +67,11 @@ export default function InboxtendTasks() {
     </p>}
     {state === "ready" && snapshot && <div className="mt-5">
       <p className="text-sm text-slate-300">
-        {snapshot.count} cached tasks · sync: {snapshot.sync_state} · last checked: {snapshot.last_checked_at ?? "never"}
+        {snapshot.count} cached tasks · last sync: {snapshot.sync_state} · last checked: {snapshot.last_checked_at ?? "never"}
+        {snapshot.checked_count !== null ? " · records checked: " + snapshot.checked_count : ""}
       </p>
       {snapshot.sync_state !== "succeeded" && <p className="mt-2 text-sm text-amber-200">
-        Cached data may be incomplete or stale.
+        Cached data may be incomplete or stale. {snapshot.last_error ? "Latest sync: " + snapshot.last_error : ""}
       </p>}
       {snapshot.items.length === 0 && <p className="mt-4 text-sm text-slate-300">
         No cached tasks for this account. No live source check was performed.
