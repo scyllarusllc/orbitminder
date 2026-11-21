@@ -128,3 +128,11 @@ The additive SQLite v5 migration adds `presence_state` and `last_seen_snapshot` 
 The Dashboard excludes `not_returned` tasks from ordinary task counts by default, displays source-presence counts, and offers an explicit option to include missing-from-snapshot historical task rows. **Not returned is not proof of deletion:** source visibility, policy, filtering and account changes may also explain it. Existing Agent event history remains stored. This is code-only; no live integration, tests or deployment verification were run.
 
 SQLite v5 新增 `presence_state` 与 `last_seen_snapshot`。只有完整、通过校验的同一账号分页同步，才会在同一事务里更新任务存在性。已返回的任务标为 `present`，本轮未返回的旧任务标为 `not_returned`，不会删除。旧数据保持 `unverified`，失败或未完成的同步不会误标记缺失；比已处理快照更旧的快照将被拒绝。Dashboard 默认不把 `not_returned` 计入正常任务数量，但允许手动查看历史行。**未返回不等于已删除。** 以上代码尚未运行测试、联调或部署。
+
+## Snapshot checkpoint and current-task ordering / 快照检查点与任务排序
+
+Migration `0006_inboxtend_snapshot_checkpoint.sql` records the last accepted complete source snapshot for each owner/account, even when the source legitimately returns zero tasks. A later replay with an identical or older snapshot timestamp is rejected rather than changing presence flags. The checkpoint and presence changes commit in the same SQLite transaction. Legacy presence timestamps are imported into the checkpoint during migration.
+
+The cached-task reader sorts `present` rows first, then `unverified`, then `not_returned` before applying the result limit. This reduces the chance of historical rows displacing current tasks in the first 100 returned. The list remains bounded and does **not** guarantee full coverage of all source tasks. No tests, live sync, or deployment were executed.
+
+SQLite v6 为每个用户与 Inboxtend 账号记录最后一次完整快照时间，包括上游返回零条任务的情况。相同或更旧时间的快照会被拒绝，避免覆盖已保存的任务存在性判断。检查点和任务存在性在同一事务中写入。缓存查询优先返回 `present`，其次 `unverified`，最后 `not_returned`，降低历史任务挤占前 100 条列表的可能性，但有限条列表不能代表完整任务全集。未运行测试、联调或部署。
