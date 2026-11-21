@@ -105,6 +105,8 @@ Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006–009 s
 
 **2026-11-21 event timeline source update:** Added an additive v3 SQLite table for append-only AgentSteers job observations, owner-scoped storage/read helpers, and a cached Dashboard timeline distinct from latest job-state snapshots. Only explicitly ingested observations for already-stored jobs can appear. No event-source ingestion pipeline, live verification, automated tests, or deployment has been completed.
 
+**2026-11-21 import-source update:** Added an operator-only `orbitminder.import_agent_events` CLI and an atomic, replay-safe event ingestion method for existing AgentSteers jobs. The input is a reviewed local file, **not** an authenticated live AgentSteers feed. Unknown jobs and conflicting events are rejected; no browser submission, Agent control, automated tests, live integration, or deployment were added. See `docs/inboxtend-gateway.md`.
+
 ### Next milestone — durable, trustworthy project data (P0)
 
 - [ ] **OM-006 — Define normalized models (SOURCE IMPLEMENTED, NOT LIVE-VERIFIED):** owner-scoped SQLite tables for project, source record, sync run, follow-up and agent activity are now in [`migrations/0001_initial.sql`](migrations/0001_initial.sql), with semantics in [`docs/data-model.md`](docs/data-model.md). **Remaining before checking complete:** manually verify migration and owner isolation in an authorized environment; schema is not yet deployed.
@@ -261,6 +263,9 @@ python3 -m orbitminder.cli --github-owner scyllarusllc --github-activity --githu
 不启用 `--github-activity` 时，只读取仓库元数据，不读取 PR／Issue，也不判断实际优先级。启用后，每个所检查的仓库最多额外执行三类 GitHub 只读请求；默认只检查前 30 个返回仓库中最多 10 个未归档仓库。列表达到 100 条可能未完整分页，因此计数可能只是下限。API 出错会报错，不应误报为空。未提供 Token 时只读取公共仓库；Token 从环境变量读取，不写入文件或日志。已有的 ChatGPT “Mission Control” 定时任务与此独立，不做修改。
 
 ### 📋 开发进度与待办
+
+**2026-11-21 事件导入代码：** 新增管理员本地导入命令 `orbitminder.import_agent_events`，支持对已存 AgentSteers Job 的事件批量原子写入、重复幂等与冲突拒绝。输入文件必须先由管理员核实来源，**不是已经接通的真实 AgentSteers 事件流**。无浏览器写入、Agent 控制、自动化测试、联调或部署。
+
 
 **2026-11-21 Agent 事件时间线代码：** 已新增 SQLite v3 只追加事件表、按用户隔离的存取方法，以及 Dashboard 中与 Job 最新状态快照分开的事件时间线。只有可信导入方写入、且关联已存 Job 的观察事件才会显示；暂未连接外部事件来源，也未运行测试、联调或部署验证。
 
