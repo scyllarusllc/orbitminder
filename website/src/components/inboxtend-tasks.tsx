@@ -38,6 +38,7 @@ type AgentEvent = {
   mode: "mock" | "real";
   observed_at: string;
   recorded_at: string;
+  verification_method: "legacy_unknown" | "operator_reviewed" | "shared_key_hmac";
 };
 type Snapshot = {
   mode: "cached_inboxtend_tasks";
@@ -238,6 +239,7 @@ export default function InboxtendTasks() {
             const task = snapshot.items.find(item => item.external_id === event.task_id);
             return <li key={event.id} className="relative rounded-lg border border-white/10 p-3 text-xs">
               <strong className="block text-white">{event.state} · {event.mode}</strong>
+              <span className="block text-amber-200">Source check: {event.verification_method === "shared_key_hmac" ? "Shared-key signature (not AgentSteers-authenticated)" : event.verification_method === "operator_reviewed" ? "Operator-reviewed file" : "Unknown legacy origin"}</span>
               <span className="block text-slate-300">{task?.title ?? "Cached task"} · {task?.project_label || "Uncategorized"}</span>
               <span className="block text-slate-400">Observed {event.observed_at} · recorded {event.recorded_at}</span>
             </li>;
@@ -350,7 +352,7 @@ export default function InboxtendTasks() {
                   event.task_id === task.external_id && event.job_id === task.agent_job_id);
                 return events.length ? <ol className="mt-2 space-y-1">
                   {events.map(event => <li key={event.id}>
-                    {event.observed_at} · {event.state} · {event.mode}
+                    {event.observed_at} · {event.state} · {event.mode} · {event.verification_method.replaceAll("_", " ")}
                   </li>)}
                 </ol> : <p className="mt-2 text-slate-400">No persisted job events.</p>;
               })()}
