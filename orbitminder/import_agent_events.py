@@ -37,7 +37,12 @@ def main() -> int:
         items = verify_envelope(
             payload, owner, os.environ.get("ORBITMINDER_AGENT_EVENT_SIGNING_KEY")
         )
-        counts = ProjectStore(db).import_agent_observations(owner, items)
+        method = ("shared_key_hmac"
+                  if os.environ.get("ORBITMINDER_AGENT_EVENT_SIGNING_KEY") is not None
+                  else "operator_reviewed")
+        counts = ProjectStore(db).import_agent_observations(
+            owner, items, verification_method=method
+        )
     except (OSError, UnicodeError, ValueError, TypeError, json.JSONDecodeError):
         print("Observation import rejected; no source data printed", file=sys.stderr)
         return 1
