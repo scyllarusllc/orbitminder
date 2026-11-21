@@ -9,25 +9,25 @@ OrbitMinder is an open-source, personal AI project command center. Its goal is t
 
 **Status (2026-11-19):** early, read-only prototype. The Python CLI supports local example JSON and GitHub repository/activity summaries. A Next.js website, Google sign-in code, a protected single-owner GitHub brief API, and an on-demand private dashboard are implemented in source, but production deployment, live Google OAuth and end-to-end behavior are **not verified**. Gmail OAuth connection, Calendar, full cross-source sync and real agent execution are not integrated; a read-only Gmail metadata adapter exists in source. GitHub activity is sampled; it does not prove task completion.
 
-### 🧭 System overview / 系统关系图
+## Three-product architecture (decision 2026-11-21)
 
-> **Target architecture / 目标架构:** The arrows below describe planned integrations, **not confirmed live connections**. / 下图是计划中的集成关系，**不代表已经部署或连通**。
+### 🧭 Architecture diagram
+
+> **Planned architecture:** Arrows show intended read-only integrations, not verified live connections.
 
 ```mermaid
 flowchart TB
-    GH["🐙 GitHub<br/>Commits · PRs · Issues"] -->|"Read-only / 只读"| OM["🧭 OrbitMinder<br/>Projects · Priorities · Dashboard"]
-    IB["📬 Inboxtend<br/>Mail · Attachments · Tasks"] -->|"Planned task feed / 计划中的只读任务接口"| OM
-    AS["🤖 AgentSteers<br/>Authorized jobs · Evidence"] -->|"Planned status feed / 计划中的只读状态接口"| OM
-    USER["👤 User / 用户"] -->|"Review · Approve / 审核与授权"| OM
+    GH["GitHub<br/>Commits, pull requests, issues"] -->|"Read-only activity"| OM["OrbitMinder<br/>Projects, priorities, dashboard"]
+    IB["Inboxtend<br/>Email, attachments, tasks"] -.->|"Planned read-only task feed"| OM
+    AS["AgentSteers<br/>Authorized jobs, results"] -.->|"Planned read-only status feed"| OM
+    USER["User"] -->|"Review and approve"| OM
 ```
 
-**Ownership / 职责边界:** Inboxtend owns email tasks and its existing agent runs; AgentSteers owns only separately authorized jobs. OrbitMinder observes and organizes—**never execute a task twice**. / Inboxtend 负责邮件任务及已有 Agent 执行，AgentSteers 仅负责另外授权的任务；OrbitMinder 负责汇总监控，**禁止重复执行同一任务**。
-
-## Three-product architecture (decision 2026-11-21)
+**Ownership:** Inboxtend owns email tasks and existing agent runs. AgentSteers owns separately authorized jobs. OrbitMinder monitors and organizes; it must never execute the same task twice.
 
 **Unified monitoring, distributed execution:** Inboxtend remains the independent, already-in-use email and task system; OrbitMinder is an **optional** cross-project control center; AgentSteers supplies reusable execution for explicitly delegated jobs not already executed by Inboxtend. **Do not execute the same task twice.** OrbitMinder should integrate via a minimal authenticated **read-only Inboxtend task feed**, instead of rebuilding Gmail sync for this deployment. The existing standalone Gmail adapter remains optional source code, not a verified integration. The current Inboxtend ↔ AgentSteers repository bridge is **mock-only**, and OrbitMinder integration is not yet implemented.
 
-[Architecture diagram, ownership rules and integration milestones](docs/architecture.md).
+Additional technical details and milestones are documented in `docs/architecture.md`.
 
 ## 🎯 Why
 
@@ -169,6 +169,20 @@ OrbitMinder 是一个开源的个人 AI 项目控制中心。它把分散在 Git
 
 ### 🧩 三项目架构（2026-11-21 决定）
 
+**🧭 系统架构图（中文）**
+
+> **目标架构：** 实线表示已有的 GitHub 只读数据来源；虚线表示计划中的接口，**不代表已经完成实际集成或部署**。
+
+```mermaid
+flowchart TB
+    GH["GitHub<br/>提交、拉取请求、问题"] -->|"只读活动数据"| OM["OrbitMinder<br/>项目、优先级、控制台"]
+    IB["Inboxtend<br/>邮件、附件、任务"] -.->|"计划接入：只读任务接口"| OM
+    AS["AgentSteers<br/>授权任务、执行结果"] -.->|"计划接入：只读状态接口"| OM
+    USER["用户"] -->|"审核与明确授权"| OM
+```
+
+**职责边界：** Inboxtend 管理邮件任务和已有的 Agent 执行；AgentSteers 仅处理另外授权的任务；OrbitMinder 负责查看和汇总状态，**不得重复执行同一任务**。
+
 **统一查看进度，各系统各司其职：**
 
 - **Inboxtend：** 独立的邮件与任务系统，继续负责邮箱、邮件正文与附件、原生邮件任务及其现有执行流程。
@@ -177,7 +191,7 @@ OrbitMinder 是一个开源的个人 AI 项目控制中心。它把分散在 Git
 
 计划通过带身份认证的 **Inboxtend 只读任务摘要 API** 集成。现有独立 Gmail 适配器仅作为可选代码保留，并非已验证的集成。Inboxtend 与 AgentSteers 目前仓库中的桥接仍为 **mock（模拟）**；OrbitMinder 尚未实际接入这两个系统。
 
-详见 [架构、数据归属和集成里程碑](docs/architecture.md)。
+更详细的设计和集成里程碑记录在 `docs/architecture.md`。
 
 ### 🎯 我们要解决的问题
 
