@@ -112,6 +112,17 @@ export default function InboxtendTasks() {
       {snapshot.sync_state !== "succeeded" && <p className="mt-2 text-sm text-amber-200">
         Cached data may be incomplete or stale. {snapshot.last_error ? "Latest sync: " + snapshot.last_error : ""}
       </p>}
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Cached task totals">
+        {[
+          { label: "New", count: snapshot.items.filter(task => task.status === "new").length },
+          { label: "In progress", count: snapshot.items.filter(task => task.status === "in_progress").length },
+          { label: "Waiting", count: snapshot.items.filter(task => task.status === "waiting").length },
+          { label: "Done", count: snapshot.items.filter(task => task.status === "done").length },
+        ].map(item => <div key={item.label} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <p className="text-xs text-slate-400">{item.label}</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums">{item.count}</p>
+        </div>)}
+      </div>
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Task filters">
         <label className="text-xs text-slate-300">Search tasks
           <input aria-label="Search tasks" value={query} onChange={e => setQuery(e.target.value)}
