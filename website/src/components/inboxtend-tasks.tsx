@@ -8,6 +8,8 @@ type Task = {
   project_label: string | null;
   status: string;
   priority: string;
+  presence_state: "unverified" | "present" | "not_returned";
+  last_seen_snapshot: string | null;
   due_at: string | null;
   due_date: string | null;
   source_url: string | null;
@@ -73,10 +75,16 @@ export default function InboxtendTasks() {
   const [projectFilter, setProjectFilter] = useState("all");
   const [eventMode, setEventMode] = useState<"all" | "real" | "mock">("all");
   const [reviewOnly, setReviewOnly] = useState(false);
+  const [includeNotReturned, setIncludeNotReturned] = useState(false);
+
+  const activeTasks = useMemo(
+    () => (snapshot?.items ?? []).filter(task => task.presence_state !== "not_returned"),
+    [snapshot]
+  );
 
   const projects = useMemo(() => {
     const summaries = new Map<string, { total: number; open: number; high: number }>();
-    for (const task of snapshot?.items ?? []) {
+    for (const task of activeTasks) {
       const name = task.project_label?.trim() || "Uncategorized";
       const counts = summaries.get(name) ?? { total: 0, open: 0, high: 0 };
       counts.total++;
@@ -85,10 +93,10 @@ export default function InboxtendTasks() {
       summaries.set(name, counts);
     }
     return [...summaries].sort(([a], [b]) => a.localeCompare(b));
-  }, [snapshot]);
+  }, [activeTasks]);
 
   const activityOverview = useMemo(() => {
-    const tasks = snapshot?.items ?? [];
+    const tasks = activeTasks;
     const activities = snapshot?.agent_activities ?? [];
     const ids = new Set(tasks.map(task => task.external_id));
     const relevant = activities.filter(activity => ids.has(activity.task_id));
@@ -115,7 +123,7 @@ export default function InboxtendTasks() {
       matched: relevant.length,
       withJobId: tasks.filter(task => task.executor === "agentsteers" && Boolean(task.agent_job_id)).length,
     };
-  }, [snapshot]);
+  }, [snapshot, activeTasks]);
 
   const visibleEvents = useMemo(() => {
     const tasks = new Map((snapshot?.items ?? []).map(task => [task.external_id, task]));
@@ -129,7 +137,7 @@ export default function InboxtendTasks() {
 
   const agentDiscrepancies = useMemo(() => {
     const activities = snapshot?.agent_activities ?? [];
-    return (snapshot?.items ?? []).flatMap(task => {
+    return activeTasks.flatMap(task => {
       if (task.executor !== "agentsteers" || !task.agent_job_id) return [];
       const matched = activities.find(activity =>
         activity.task_id === task.external_id && activity.job_id === task.agent_job_id);
@@ -139,13 +147,14 @@ export default function InboxtendTasks() {
       }
       return [];
     });
-  }, [snapshot]);
+  }, [snapshot, activeTasks]);
 
   const reviewIds = useMemo(() => new Set(agentDiscrepancies.map(item => item.task.external_id)), [agentDiscrepancies]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     const rows = (snapshot?.items ?? []).filter(task =>
+      (includeNotReturned || task.presence_state !== "not_returned") &&
       (!reviewOnly || reviewIds.has(task.external_id)) &&
       (statusFilter === "all" || task.status === statusFilter) &&
       (projectFilter === "all" || (task.project_label?.trim() || "Uncategorized") === projectFilter) &&
@@ -173,7 +182,7 @@ export default function InboxtendTasks() {
       if (!Number.isNaN(newer) && newer !== 0) return newer;
       return a.external_id.localeCompare(b.external_id);
     });
-  }, [snapshot, statusFilter, agentFilter, sortBy, query, projectFilter, reviewOnly, reviewIds]);
+  }, [snapshot, statusFilter, agentFilter, sortBy, query, projectFilter, reviewOnly, reviewIds, includeNotReturned]);
 
   async function load() {
     setState("loading");
@@ -256,9 +265,15 @@ export default function InboxtendTasks() {
           Showing first 10 of {agentDiscrepancies.length} review items.
         </p>}
       </section>
+      <p className="mt-3 text-xs text-slate-300">
+        Presence in latest complete snapshot: {snapshot.items.filter(task => task.presence_state === "present").length} present ·
+        {" "}{snapshot.items.filter(task => task.presence_state === "not_returned").length} not returned ·
+        {" "}{snapshot.items.filter(task => task.presence_state === "unverified").length} legacy unverified.
+        Not returned does not prove the source task was deleted.
+      </p>
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Cached task totals">
         {[
-          { label: "New", count: snapshot.items.filter(task => task.status === "new").length },
+          { label: "New", count: activeTasks.filter(task => task.status === "new").length },
           { label: "In progress", count: snapshot.items.filter(task => task.status === "in_progress").length },
           { label: "Waiting", count: snapshot.items.filter(task => task.status === "waiting").length },
           { label: "Done", count: snapshot.items.filter(task => task.status === "done").length },
@@ -331,7 +346,7 @@ export default function InboxtendTasks() {
           <button type="button" aria-pressed={projectFilter === "all"}
             onClick={() => setProjectFilter("all")}
             className={`rounded-lg border px-3 py-2 text-xs ${projectFilter === "all" ? "border-cyan-400 bg-cyan-400/10 text-cyan-200" : "border-white/20 text-slate-300"}`}>
-            All projects · {snapshot.items.length}
+            All projects · {activeTasks.length}
           </button>
           {projects.map(([name, counts]) => <button key={name} type="button"
             aria-pressed={projectFilter === name} onClick={() => setProjectFilter(name)}
@@ -366,6 +381,12 @@ export default function InboxtendTasks() {
           </select>
         </label>
       </div>
+      <label className="mt-3 flex items-center gap-2 text-xs text-slate-300">
+        <input type="checkbox" checked={includeNotReturned}
+          onChange={event => setIncludeNotReturned(event.target.checked)}
+          className="accent-cyan-400" />
+        Include tasks not returned by the latest complete sync
+      </label>
       <p className="mt-3 text-xs text-slate-400" role="status">
         Showing {filtered.length} of {snapshot.items.length} cached tasks (up to the first 100 loaded).
         Filters and sorting affect only this local list, not all tasks in the source.
@@ -382,6 +403,10 @@ export default function InboxtendTasks() {
             <strong className="break-words">{task.title}</strong>
             <span className="rounded-full border border-white/20 px-2.5 py-1 text-xs text-slate-200">{task.status}</span>
           </div>
+          {task.presence_state !== "present" && <p className="mt-2 text-xs text-amber-200">
+            {task.presence_state === "not_returned" ? "Not returned by latest complete source snapshot" :
+              "Presence not verified by a complete source snapshot"}
+          </p>}
           <p className="mt-2 text-xs text-slate-300">
             {task.project_label ?? "Uncategorized"} · {task.priority} priority
             {task.due_at || task.due_date ? " · Due " + (task.due_at ?? task.due_date) : ""}
@@ -412,6 +437,7 @@ export default function InboxtendTasks() {
             <p className="sm:col-span-2 text-amber-200">Task-reported Agent state: {task.agent_status ?? "not provided"} — source metadata, not independent execution proof.</p>
             <p>Due timezone: <span className="text-white">{task.due_timezone || "Not set"}</span></p>
             <p>Snapshot observed: <span className="text-white">{task.observed_at}</span></p>
+            <p>Last seen in source snapshot: <span className="text-white">{task.last_seen_snapshot ?? "Not verified"}</span></p>
             <div className="sm:col-span-2 rounded-lg border border-white/10 p-3">
               <h4 className="font-semibold text-white">Persisted job events</h4>
               {(() => {
