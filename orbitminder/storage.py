@@ -377,3 +377,72 @@ class ProjectStore:
                    ORDER BY e.observed_at DESC,e.id LIMIT ?""",
                 (owner_id, account_key, limit),
             )]
+
+    def import_agent_observations(self, owner_id, observations):
+        """Atomically ingest operator-reviewed observations for existing jobs.
+
+        Replays of identical source event keys are no-ops; divergent replays
+        fail and roll back the batch. This does not authenticate the source:
+        provenance must be checked before invoking this method.
+        """
+        owner_id = _owner(owner_id)
+        if not isinstance(observations, list) or not 1 <= len(observations) <= 500:
+            raise ValueError("expected 1 to 500 validated observations")
+        prepared = []
+        keys = set()
+        for item in observations:
+            if not isinstance(item, dict) or set(item) != {
+                "external_job_id", "event_key", "state", "mode", "observed_at"
+            }:
+                raise ValueError("unexpected observation fields")
+            job, key, state, mode, observed = (
+                item["external_job_id"], item["event_key"], item["state"],
+                item["mode"], item["observed_at"]
+            )
+            if any(not isinstance(v, str) or not v.strip() or len(v) > 200
+                   for v in (job, key, state, observed)):
+                raise ValueError("invalid observation value")
+            if mode not in ("mock", "real"):
+                raise ValueError("invalid observation mode")
+            timestamp = datetime.fromisoformat(observed.replace("Z", "+00:00"))
+            if timestamp.tzinfo is None:
+                raise ValueError("observation timestamp requires a timezone")
+            normalized = timestamp.astimezone(timezone.utc).isoformat()
+            if (job, key) in keys:
+                raise ValueError("duplicate event key in batch")
+            keys.add((job, key))
+            prepared.append((job, key, state, mode, normalized))
+
+        inserted = 0
+        with self._connect() as db:
+            for job, key, state, mode, observed in prepared:
+                parent = db.execute(
+                    """SELECT mode FROM agent_activities
+                       WHERE owner_id=? AND provider='agentsteers'
+                         AND external_job_id=?""", (owner_id, job)
+                ).fetchone()
+                if not parent:
+                    raise ValueError("observation requires an existing AgentSteers job")
+                if parent["mode"] != mode:
+                    raise ValueError("observation mode conflicts with stored job")
+                existing = db.execute(
+                    """SELECT state,mode,observed_at FROM agent_activity_events
+                       WHERE owner_id=? AND provider='agentsteers'
+                         AND external_job_id=? AND event_key=?""",
+                    (owner_id, job, key),
+                ).fetchone()
+                if existing:
+                    if (existing["state"], existing["mode"], existing["observed_at"]) != (
+                        state, mode, observed
+                    ):
+                        raise ValueError("conflicting observation replay")
+                    continue
+                db.execute(
+                    """INSERT INTO agent_activity_events (
+                        id,owner_id,provider,external_job_id,event_key,
+                        state,mode,observed_at,recorded_at
+                    ) VALUES (?,?,'agentsteers',?,?,?,?,?,?)""",
+                    (uuid4().hex, owner_id, job, key, state, mode, observed, _now()),
+                )
+                inserted += 1
+        return {"accepted": len(prepared), "inserted": inserted}
