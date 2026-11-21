@@ -274,9 +274,9 @@ export default function InboxtendTasks() {
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Cached task totals">
         {[
           { label: "New", count: activeTasks.filter(task => task.status === "new").length },
-          { label: "In progress", count: snapshot.items.filter(task => task.status === "in_progress").length },
-          { label: "Waiting", count: snapshot.items.filter(task => task.status === "waiting").length },
-          { label: "Done", count: snapshot.items.filter(task => task.status === "done").length },
+          { label: "In progress", count: activeTasks.filter(task => task.status === "in_progress").length },
+          { label: "Waiting", count: activeTasks.filter(task => task.status === "waiting").length },
+          { label: "Done", count: activeTasks.filter(task => task.status === "done").length },
         ].map(item => <div key={item.label} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
           <p className="text-xs text-slate-400">{item.label}</p>
           <p className="mt-1 text-xl font-semibold tabular-nums">{item.count}</p>
