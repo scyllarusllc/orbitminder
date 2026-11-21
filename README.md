@@ -97,6 +97,8 @@ Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006–009 s
 
 **2026-11-21 UI source update:** The cached Inboxtend task panel now supports title/project search, task-status and Agent-assignment filters, priority/due-date/recent-update sorting, and four status summary counts. All operations are browser-side on the loaded historical snapshot (maximum 100 returned tasks); they do not query the live source or dispatch work. **Code committed, not tested or integrated live.**
 
+**2026-11-21 UI source update:** The Inboxtend cached-task panel now includes expandable read-only task details (review state, executor, Agent job reference, due timezone and snapshot observation time) and a cross-project summary with project filtering (total/open/high-priority counts). These views only operate on up to 100 loaded historical tasks and cannot approve or dispatch an Agent. Source committed directly to main; no tests, integration runs, or deployment were performed.
+
 ### Next milestone — durable, trustworthy project data (P0)
 
 - [ ] **OM-006 — Define normalized models (SOURCE IMPLEMENTED, NOT LIVE-VERIFIED):** owner-scoped SQLite tables for project, source record, sync run, follow-up and agent activity are now in [`migrations/0001_initial.sql`](migrations/0001_initial.sql), with semantics in [`docs/data-model.md`](docs/data-model.md). **Remaining before checking complete:** manually verify migration and owner isolation in an authorized environment; schema is not yet deployed.
@@ -253,6 +255,9 @@ python3 -m orbitminder.cli --github-owner scyllarusllc --github-activity --githu
 不启用 `--github-activity` 时，只读取仓库元数据，不读取 PR／Issue，也不判断实际优先级。启用后，每个所检查的仓库最多额外执行三类 GitHub 只读请求；默认只检查前 30 个返回仓库中最多 10 个未归档仓库。列表达到 100 条可能未完整分页，因此计数可能只是下限。API 出错会报错，不应误报为空。未提供 Token 时只读取公共仓库；Token 从环境变量读取，不写入文件或日志。已有的 ChatGPT “Mission Control” 定时任务与此独立，不做修改。
 
 ### 📋 开发进度与待办
+
+**2026-11-21 界面开发进展：** 已新增只读任务详情展开面板（审核状态、执行方、Agent Job ID、时区与快照时间），以及跨项目任务汇总与项目筛选（全部、未完成及高优先级数量）。仅统计已载入的最多 100 条历史缓存，不提供 Agent 审批或执行操作。代码直接提交到 main，未运行测试、联调或部署验证。
+
 
 **2026-11-21 界面代码更新：** Inboxtend 缓存任务面板现支持按标题或项目搜索、按任务状态和 Agent 指派情况筛选、按优先级／截止时间／最近更新排序，并显示四类状态数量。所有操作仅处理已加载的历史缓存（最多 100 条），不会查询实时邮件或下发 Agent 指令。**代码已提交，但未运行测试或真实联调。**
 
