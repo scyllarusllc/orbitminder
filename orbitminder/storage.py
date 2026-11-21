@@ -15,6 +15,7 @@ from uuid import uuid4
 MIGRATIONS = {
     1: Path(__file__).resolve().parent.parent / "migrations" / "0001_initial.sql",
     2: Path(__file__).resolve().parent.parent / "migrations" / "0002_inboxtend_tasks.sql",
+    3: Path(__file__).resolve().parent.parent / "migrations" / "0003_agent_activity_events.sql",
 }
 
 
@@ -320,3 +321,59 @@ class ProjectStore:
                 (owner_id, account_key, limit),
             ).fetchall()
             return [dict(row) for row in rows]
+
+    def append_agent_observation(self, owner_id, *, external_job_id, event_key,
+                                 state, mode, observed_at):
+        """Append an independently observed state for an existing AgentSteers job.
+
+        A trusted importer must verify event_key and observed_at at the source.
+        Never synthesize events from cached task labels or an unverified job ID.
+        """
+        owner_id = _owner(owner_id)
+        for value in (external_job_id, event_key, state, observed_at):
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError("validated observation fields are required")
+        if mode not in ("mock", "real"):
+            raise ValueError("invalid execution mode")
+        timestamp = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+        if timestamp.tzinfo is None:
+            raise ValueError("observed_at must be timezone-aware")
+        with self._connect() as db:
+            found = db.execute(
+                """SELECT 1 FROM agent_activities
+                   WHERE owner_id=? AND provider='agentsteers' AND external_job_id=?""",
+                (owner_id, external_job_id),
+            ).fetchone()
+            if not found:
+                raise ValueError("matching stored AgentSteers job required")
+            result = db.execute(
+                """INSERT OR IGNORE INTO agent_activity_events
+                   (id,owner_id,provider,external_job_id,event_key,state,
+                    mode,observed_at,recorded_at)
+                   VALUES (?,?,'agentsteers',?,?,?,?,?,?)""",
+                (uuid4().hex, owner_id, external_job_id, event_key,
+                 state, mode, timestamp.isoformat(), _now()),
+            )
+            return bool(result.rowcount)
+
+    def list_inboxtend_agent_events(self, owner_id, account_key, *, limit=100):
+        """Show only persisted, same-owner job observations linked to cached tasks."""
+        owner_id = _owner(owner_id)
+        if not isinstance(account_key, str) or not account_key.strip():
+            raise ValueError("account_key is required")
+        if type(limit) is not int or not 1 <= limit <= 500:
+            raise ValueError("invalid limit")
+        with self._connect() as db:
+            return [dict(row) for row in db.execute(
+                """SELECT e.id,t.external_id AS task_id,
+                          e.external_job_id AS job_id,e.state,e.mode,
+                          e.observed_at,e.recorded_at
+                   FROM agent_activity_events AS e
+                   JOIN inboxtend_tasks AS t
+                     ON t.owner_id=e.owner_id
+                    AND t.agent_job_id=e.external_job_id
+                    AND t.executor='agentsteers'
+                   WHERE e.owner_id=? AND t.account_key=?
+                   ORDER BY e.observed_at DESC,e.id LIMIT ?""",
+                (owner_id, account_key, limit),
+            )]
