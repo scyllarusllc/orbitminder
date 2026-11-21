@@ -36,6 +36,8 @@ The solid **arrows describe intended relationships**, not proof that they are al
 
 ## Minimal integration contract (proposal; not implemented)
 
+Detailed fields, authorization, pagination, sync behavior and example payload: [Inboxtend read-only task API contract](inboxtend-readonly-api.md).
+
 1. **Inboxtend → OrbitMinder, read-only**: authenticated `GET /integration/v1/tasks?updated_since=...` and `GET /integration/v1/tasks/{id}`. Return stable ID, owner scope, title, project, priority, status, due time + timezone, review state, assigned executor, remote job ID (if any), last update, source deep-link, and revision/ETag. Avoid email bodies, attachments and credentials.
 2. **OrbitMinder → AgentSteers, read-only**: read per-owner job IDs, queue/running/failed/succeeded/cancelled states, timestamps and evidence URLs. Label mock outcomes distinctly (`queued_mock` is **not** completed).
 3. **Approved commands (later)**: scope explicit approval to task revision, destination executor, requested action, affected resources and expiration. Route to Inboxtend if it already owns that task's execution; use AgentSteers only on explicit handoff. Enforce authenticated principal, authorization and idempotency on the receiving server; an OrbitMinder UI click alone is not authorization.
