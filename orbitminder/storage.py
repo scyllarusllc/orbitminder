@@ -12,7 +12,10 @@ import sqlite3
 from uuid import uuid4
 
 
-MIGRATION = Path(__file__).resolve().parent.parent / "migrations" / "0001_initial.sql"
+MIGRATIONS = {
+    1: Path(__file__).resolve().parent.parent / "migrations" / "0001_initial.sql",
+    2: Path(__file__).resolve().parent.parent / "migrations" / "0002_inboxtend_tasks.sql",
+}
 
 
 def _now():
@@ -54,15 +57,14 @@ class ProjectStore:
             versions = db.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name='schema_migrations'"
             ).fetchone()
-            if versions:
-                applied = {row[0] for row in db.execute("SELECT version FROM schema_migrations")}
-                if any(version > 1 for version in applied):
-                    raise RuntimeError("database schema is newer than this application")
-                if 1 in applied:
-                    return
-            script = MIGRATION.read_text(encoding="utf-8")
-            # executescript commits a preexisting transaction, so wrap the script itself.
-            db.executescript("BEGIN IMMEDIATE;\n" + script + "\nCOMMIT;")
+            applied = ({row[0] for row in db.execute("SELECT version FROM schema_migrations")}
+                       if versions else set())
+            if any(version not in MIGRATIONS for version in applied):
+                raise RuntimeError("database schema is newer than this application")
+            for version, migration in MIGRATIONS.items():
+                if version not in applied:
+                    script = migration.read_text(encoding="utf-8")
+                    db.executescript("BEGIN IMMEDIATE;\n" + script + "\nCOMMIT;")
             errors = db.execute("PRAGMA foreign_key_check").fetchall()
             if errors:
                 raise RuntimeError("database foreign key verification failed")
@@ -225,3 +227,67 @@ class ProjectStore:
             "is_fully_verified": run_state == "succeeded" and
                 all(item["verification_state"] == "verified" for item in records),
         }
+
+    def save_inboxtend_tasks(self, owner_id, account_key, tasks):
+        """Atomically cache validated task snapshots; older revisions never win."""
+        owner_id = _owner(owner_id)
+        if not isinstance(account_key, str) or not account_key.strip():
+            raise ValueError("account_key is required")
+        now = _now()
+        written = 0
+        with self._connect() as db:
+            for task in tasks:
+                values = (
+                    owner_id, account_key, task.id, task.title, task.project,
+                    task.status, task.priority,
+                    task.due_at.isoformat() if task.due_at else None,
+                    task.due_date.isoformat() if task.due_date else None,
+                    task.due_timezone, str(task.source_url) if task.source_url else None,
+                    task.review_state, task.assigned_agent, task.executor,
+                    task.agent_job_id, task.agent_status,
+                    task.updated_at.isoformat(), task.revision, now,
+                )
+                result = db.execute(
+                    """INSERT INTO inboxtend_tasks (
+                        owner_id,account_key,external_id,title,project_label,
+                        status,priority,due_at,due_date,due_timezone,source_url,
+                        review_state,assigned_agent,executor,agent_job_id,
+                        agent_status,source_updated_at,revision,observed_at
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    ON CONFLICT(owner_id,account_key,external_id) DO UPDATE SET
+                        title=excluded.title,project_label=excluded.project_label,
+                        status=excluded.status,priority=excluded.priority,
+                        due_at=excluded.due_at,due_date=excluded.due_date,
+                        due_timezone=excluded.due_timezone,source_url=excluded.source_url,
+                        review_state=excluded.review_state,
+                        assigned_agent=excluded.assigned_agent,
+                        executor=excluded.executor,agent_job_id=excluded.agent_job_id,
+                        agent_status=excluded.agent_status,
+                        source_updated_at=excluded.source_updated_at,
+                        revision=excluded.revision,observed_at=excluded.observed_at
+                    WHERE excluded.revision > inboxtend_tasks.revision
+                      OR (excluded.revision = inboxtend_tasks.revision
+                          AND excluded.source_updated_at >= inboxtend_tasks.source_updated_at)
+                    """, values,
+                )
+                written += result.rowcount
+        return written
+
+    def list_inboxtend_tasks(self, owner_id, account_key, *, limit=100):
+        """Owner/account-filtered cached summaries; never include message content."""
+        owner_id = _owner(owner_id)
+        if not isinstance(account_key, str) or not account_key.strip():
+            raise ValueError("account_key is required")
+        if type(limit) is not int or not 1 <= limit <= 500:
+            raise ValueError("invalid limit")
+        with self._connect() as db:
+            return [dict(row) for row in db.execute(
+                """SELECT external_id,title,project_label,status,priority,due_at,
+                          due_date,due_timezone,source_url,review_state,assigned_agent,
+                          executor,agent_job_id,agent_status,source_updated_at,
+                          revision,observed_at
+                   FROM inboxtend_tasks
+                   WHERE owner_id=? AND account_key=?
+                   ORDER BY source_updated_at DESC,external_id LIMIT ?""",
+                (owner_id, account_key, limit),
+            )]
