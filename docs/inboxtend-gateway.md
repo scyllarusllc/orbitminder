@@ -24,3 +24,11 @@ python -m uvicorn orbitminder.api:app --host 127.0.0.1 --port 8000
 `uvicorn` must be installed separately, e.g. `python -m pip install "uvicorn>=0.30,<1"`. No Docker required. The endpoint is `GET /api/v1/inboxtend/tasks?limit=50`; it accepts an optional opaque `cursor` and requires `Authorization: Bearer <ORBITMINDER_API_TOKEN>`. Responses are `private, no-store`. The gateway checks that the upstream uses HTTPS and disables redirects. It returns 503 for missing configuration and 502 for upstream failures or invalid payloads, rather than presenting missing data as an empty task list.
 
 **Limitations / 限制：** Inboxtend must actually implement `GET /integration/v1/tasks` with the v1 payload specified in `docs/inboxtend-readonly-api.md`; otherwise the gateway cannot fetch real tasks. No persistence, incremental sync checkpoint, per-user browser login, scheduler, or bidirectional write operations are implemented in this step. Do not expose this shared-token gateway publicly without further access-control hardening.
+
+## Source import milestone / 摘要导入进展
+
+`orbitminder/inboxtend_import.py` implements a **server-side-only** paginated import helper. A trusted caller supplies the authenticated owner ID, account key, and a validated page fetcher. It checks stable snapshots, repeated cursors, duplicate task IDs and the page bound before writing cached summaries to the existing owner/account-scoped SQLite `source_records` table. Fetch errors preserve the old cache and log a failed sync. Interrupted writes are marked partial. No deletions are inferred.
+
+`orbitminder/inboxtend_import.py` 已提供**仅服务端使用**的分页摘要导入逻辑。由可信调用方提供已认证用户、账户标识及已校验的分页读取函数；它检查快照一致性、重复游标、重复任务 ID 和页数上限。读取失败时保留旧缓存并记为失败，写入中断时记为部分完成，不根据缺失结果删除记录。
+
+**Not yet connected / 尚未接通：** The HTTP gateway does not call the importer automatically. The current cache only stores task title, source URL and verification timestamps; status, priority, revision, due dates and Agent state are **not persisted**. A versioned migration and authenticated Dashboard read path are required before claiming a full task sync. No live Inboxtend connection or runtime verification has been performed.
