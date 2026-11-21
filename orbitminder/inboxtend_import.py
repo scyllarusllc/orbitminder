@@ -24,6 +24,8 @@ async def import_task_summaries(
     A failed or incomplete fetch leaves the previous task snapshot untouched.
     Validated task metadata is written atomically to the additive v2 table;
     source revisions prevent older pages overwriting newer cached versions.
+    The complete snapshot also marks previously cached IDs not returned by the
+    source without deleting their historical metadata.
     """
     if not isinstance(owner_id, str) or not owner_id.strip():
         raise ValueError("trusted authenticated owner_id is required")
@@ -70,7 +72,9 @@ async def import_task_summaries(
     # Save all task summaries in one transaction. A write failure rolls back
     # the entire incoming snapshot and leaves cached data available.
     try:
-        written = store.save_inboxtend_tasks(owner_id, account_key, items)
+        written = store.save_inboxtend_tasks(
+            owner_id, account_key, items, complete_snapshot_at=snapshot_at
+        )
     except Exception:
         store.record_sync(owner_id, provider="inboxtend", account_key=account_key,
                           state="failed", checked_count=0,
