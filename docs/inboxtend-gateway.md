@@ -136,3 +136,9 @@ Migration `0006_inboxtend_snapshot_checkpoint.sql` records the last accepted com
 The cached-task reader sorts `present` rows first, then `unverified`, then `not_returned` before applying the result limit. This reduces the chance of historical rows displacing current tasks in the first 100 returned. The list remains bounded and does **not** guarantee full coverage of all source tasks. No tests, live sync, or deployment were executed.
 
 SQLite v6 为每个用户与 Inboxtend 账号记录最后一次完整快照时间，包括上游返回零条任务的情况。相同或更旧时间的快照会被拒绝，避免覆盖已保存的任务存在性判断。检查点和任务存在性在同一事务中写入。缓存查询优先返回 `present`，其次 `unverified`，最后 `not_returned`，降低历史任务挤占前 100 条列表的可能性，但有限条列表不能代表完整任务全集。未运行测试、联调或部署。
+
+## Clock-skew guard / 快照时间防护
+
+A complete source snapshot with a timestamp later than the trusted OrbitMinder server clock is rejected **before** the checkpoint or cached task presence is changed. This prevents a future-dated checkpoint from blocking subsequent valid source snapshots. Check the upstream clock if an operator sees this rejection; do not silently rewrite source timestamps. A source response is not considered a successful live sync merely because the code path exists.
+
+完整来源快照若时间晚于 OrbitMinder 服务器的当前时间，将在更新检查点和任务存在性之前被拒绝，避免未来时间锁住后续合法同步。出现此错误时应核对上游时钟，不应静默改写来源时间。该代码尚未经过测试、联调或部署验证。
