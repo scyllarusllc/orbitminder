@@ -49,6 +49,7 @@ type Snapshot = {
   last_checked_at: string | null;
   checked_count: number | null;
   last_error: string | null;
+  freshness: { state: "never_synced" | "sync_failed_or_incomplete" | "invalid_timestamp" | "aged_over_24h" | "recent_cache"; age_hours: number | null };
   count: number;
 };
 function safeHttpsLink(value: string | null): boolean {
@@ -193,6 +194,14 @@ export default function InboxtendTasks() {
       <p className="text-sm text-slate-300">
         {snapshot.count} cached tasks · last sync: {snapshot.sync_state} · last checked: {snapshot.last_checked_at ?? "never"}
         {snapshot.checked_count !== null ? " · records checked: " + snapshot.checked_count : ""}
+      </p>
+      <p role="status" className={`mt-2 text-sm ${snapshot.freshness?.state === "recent_cache" ? "text-slate-300" : "text-amber-200"}`}>
+        Cache freshness: {snapshot.freshness?.state === "recent_cache" ? "last successful sync within 24 hours (not live)" :
+          snapshot.freshness?.state === "aged_over_24h" ? "last successful sync more than 24 hours ago" :
+          snapshot.freshness?.state === "never_synced" ? "never synchronized" :
+          snapshot.freshness?.state === "sync_failed_or_incomplete" ? "latest sync was not successful" :
+          "sync timestamp unavailable or invalid"}
+        {typeof snapshot.freshness?.age_hours === "number" ? ` · ${snapshot.freshness.age_hours} hours ago` : ""}
       </p>
       {snapshot.sync_state !== "succeeded" && <p className="mt-2 text-sm text-amber-200">
         Cached data may be incomplete or stale. {snapshot.last_error ? "Latest sync: " + snapshot.last_error : ""}
@@ -343,6 +352,7 @@ export default function InboxtendTasks() {
             <p>Review: <span className="text-white">{task.review_state || "Unknown"}</span></p>
             <p>Executor: <span className="text-white">{task.executor || "None"}</span></p>
             <p>Agent job: <span className="break-all text-white">{task.agent_job_id || "None"}</span></p>
+            <p className="sm:col-span-2 text-amber-200">Task-reported Agent state: {task.agent_status ?? "not provided"} — source metadata, not independent execution proof.</p>
             <p>Due timezone: <span className="text-white">{task.due_timezone || "Not set"}</span></p>
             <p>Snapshot observed: <span className="text-white">{task.observed_at}</span></p>
             <div className="sm:col-span-2 rounded-lg border border-white/10 p-3">
@@ -356,6 +366,7 @@ export default function InboxtendTasks() {
                   </li>)}
                 </ol> : <p className="mt-2 text-slate-400">No persisted job events.</p>;
               })()}
+              <p className="mt-3 text-slate-400">Persisted events may be incomplete. A signed import proves only shared-key possession, not official AgentSteers origin.</p>
               <h4 className="mt-3 font-semibold text-white">Stored AgentSteers current activity</h4>
               {(() => {
                 const matches = snapshot.agent_activities.filter(activity =>
