@@ -8,9 +8,29 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from .storage import ProjectStore
+
+def freshness(run):
+    """Conservative UI-only freshness assessment, never proof of live accuracy."""
+    if not run:
+        return {"state": "never_synced", "age_hours": None}
+    if run["state"] != "succeeded":
+        return {"state": "sync_failed_or_incomplete", "age_hours": None}
+    try:
+        checked = datetime.fromisoformat(run["finished_at"].replace("Z", "+00:00"))
+        if checked.tzinfo is None:
+            raise ValueError("timezone required")
+        age = datetime.now(timezone.utc) - checked.astimezone(timezone.utc)
+        if age < timedelta(0):
+            return {"state": "invalid_timestamp", "age_hours": None}
+        hours = round(age.total_seconds() / 3600, 1)
+        return {"state": "aged_over_24h" if age > timedelta(hours=24) else "recent_cache",
+                "age_hours": hours}
+    except (ValueError, TypeError, OverflowError, AttributeError):
+        return {"state": "invalid_timestamp", "age_hours": None}
 
 
 def main():
@@ -41,6 +61,7 @@ def main():
         "checked_count": run["checked_count"] if run else None,
         "last_error": run["last_error"] if run else None,
         "count": len(records),
+        "freshness": freshness(run),
         "note": "Saved snapshot, not a live task check.",
     }, ensure_ascii=False))
     return 0
