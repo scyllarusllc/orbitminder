@@ -13,19 +13,21 @@ OrbitMinder is an open-source, personal AI project command center. Its goal is t
 
 ### 🧭 Architecture diagram
 
-> **Planned architecture:** Arrows show intended read-only integrations, not verified live connections.
+> **Target design: bidirectional monitoring and control.** Solid arrows are read-only data flows. Dashed arrows are **future, explicitly approved commands**, not implemented live integrations.
 
 ```mermaid
 flowchart TB
-    GH["GitHub<br/>Commits, pull requests, issues"] -->|"Read-only activity"| OM["OrbitMinder<br/>Projects, priorities, dashboard"]
-    IB["Inboxtend<br/>Email, attachments, tasks"] -.->|"Planned read-only task feed"| OM
-    AS["AgentSteers<br/>Authorized jobs, results"] -.->|"Planned read-only status feed"| OM
-    USER["User"] -->|"Review and approve"| OM
+    U["User"] -->|"Review and approve"| OM["OrbitMinder<br/>Monitor and control"]
+    GH["GitHub"] -->|"Read activity"| OM
+    IB["Inboxtend"] -->|"Task status"| OM
+    OM -.->|"Approved task actions"| IB
+    AS["AgentSteers"] -->|"Job status"| OM
+    OM -.->|"Approved delegation"| AS
 ```
 
-**Ownership:** Inboxtend owns email tasks and existing agent runs. AgentSteers owns separately authorized jobs. OrbitMinder monitors and organizes; it must never execute the same task twice.
+**One authoritative executor per action:** Inboxtend retains ownership of email tasks and its existing Agent runs; AgentSteers executes only separately authorized work. Future write requests require server-side permission checks, task revision checks, an idempotency key, audit history, and failure reconciliation. GitHub access remains read-only unless separately scoped and authorized. **This is a product goal, not a claim that write APIs or real Agent execution are already available.**
 
-**Unified monitoring, distributed execution:** Inboxtend remains the independent, already-in-use email and task system; OrbitMinder is an **optional** cross-project control center; AgentSteers supplies reusable execution for explicitly delegated jobs not already executed by Inboxtend. **Do not execute the same task twice.** OrbitMinder should integrate via a minimal authenticated **read-only Inboxtend task feed**, instead of rebuilding Gmail sync for this deployment. The existing standalone Gmail adapter remains optional source code, not a verified integration. The current Inboxtend ↔ AgentSteers repository bridge is **mock-only**, and OrbitMinder integration is not yet implemented.
+**Integration order:** first ship a minimal authenticated read-only Inboxtend task feed, then the unified status dashboard, then an approval-gated control API. Do not duplicate Gmail syncing or execution. The current Inboxtend–AgentSteers bridge is mock-only.
 
 Additional technical details and milestones are documented in `docs/architecture.md`.
 
@@ -171,27 +173,23 @@ OrbitMinder 是一个开源的个人 AI 项目控制中心。它把分散在 Git
 
 **🧭 系统架构图（中文）**
 
-> **目标架构：** 实线表示已有的 GitHub 只读数据来源；虚线表示计划中的接口，**不代表已经完成实际集成或部署**。
+> **目标：双向监控与控制。** 实线表示读取状态；虚线表示**未来经过用户明确授权的控制指令**，不是已经上线的功能。
 
 ```mermaid
 flowchart TB
-    GH["GitHub<br/>提交、拉取请求、问题"] -->|"只读活动数据"| OM["OrbitMinder<br/>项目、优先级、控制台"]
-    IB["Inboxtend<br/>邮件、附件、任务"] -.->|"计划接入：只读任务接口"| OM
-    AS["AgentSteers<br/>授权任务、执行结果"] -.->|"计划接入：只读状态接口"| OM
-    USER["用户"] -->|"审核与明确授权"| OM
+    U["用户"] -->|"审核并授权"| OM["OrbitMinder<br/>统一监控与控制"]
+    GH["GitHub"] -->|"读取项目活动"| OM
+    IB["Inboxtend"] -->|"读取任务状态"| OM
+    OM -.->|"授权后的任务操作"| IB
+    AS["AgentSteers"] -->|"读取执行状态"| OM
+    OM -.->|"授权后的任务委派"| AS
 ```
 
-**职责边界：** Inboxtend 管理邮件任务和已有的 Agent 执行；AgentSteers 仅处理另外授权的任务；OrbitMinder 负责查看和汇总状态，**不得重复执行同一任务**。
+**一个任务只由一个执行方负责：** Inboxtend 继续管理邮件任务及已有 Agent 运行；AgentSteers 只执行另外明确授权的任务。未来所有控制操作都必须由服务端检查用户权限、任务版本、幂等标识及审计记录，并对执行结果不确定的情况进行核对，避免重复执行。GitHub 默认仍然只读，修改仓库必须单独授权。
 
-**统一查看进度，各系统各司其职：**
+**开发顺序：** 先接入 Inboxtend 带身份认证的只读任务接口，再实现统一状态展示，最后加入需要用户批准的控制接口。不要重复同步 Gmail 或重复执行任务。现有 Inboxtend 与 AgentSteers 桥接仍是模拟实现，双向控制尚未接通。
 
-- **Inboxtend：** 独立的邮件与任务系统，继续负责邮箱、邮件正文与附件、原生邮件任务及其现有执行流程。
-- **OrbitMinder：** 可选的跨项目控制中心，汇总优先级、状态和来源链接；默认只读，不重新实现 Inboxtend 的邮箱同步。
-- **AgentSteers：** 处理获得明确授权、且尚未由 Inboxtend 执行的独立任务。**同一任务绝不能重复执行。**
-
-计划通过带身份认证的 **Inboxtend 只读任务摘要 API** 集成。现有独立 Gmail 适配器仅作为可选代码保留，并非已验证的集成。Inboxtend 与 AgentSteers 目前仓库中的桥接仍为 **mock（模拟）**；OrbitMinder 尚未实际接入这两个系统。
-
-更详细的设计和集成里程碑记录在 `docs/architecture.md`。
+更详细的技术设计和集成里程碑记录在 `docs/architecture.md`。
 
 ### 🎯 我们要解决的问题
 
