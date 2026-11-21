@@ -110,6 +110,20 @@ orbitminder/
   README.md
 ```
 
+
+## Development workflow and repository rules
+
+These rules apply to OrbitMinder development, including the FastAPI + SQLModel prototype work:
+
+- **Commit early and often:** complete one small, coherent change at a time and promptly commit it to the `main` branch. Do not wait for a whole milestone to finish before saving completed work.
+- **Protect existing changes:** inspect the current branch, file versions, and relevant code before editing. Avoid overwriting unrelated work; resolve conflicts rather than forcing changes.
+- **Meaningful commit history:** use concise, descriptive messages (for example, `feat(api): add FastAPI backend`). Keep unrelated features in separate commits.
+- **Report verifiable progress:** after each functional milestone, report what changed, the actual commit SHA/link, outstanding issues, and which manual checks were performed. A commit is **not** proof of deployment or working production behavior.
+- **Verify without automated test suites:** honor the owner's request not to run automated test suites. Perform targeted manual review and validation appropriate to the change; never label unverified behavior as tested or live.
+- **Self-hosted first:** favor a simple, independently deployable setup. Do not introduce Docker at this stage.
+- **Current direction:** retain the existing Next.js UI; incrementally add FastAPI, SQLModel, SQLite and Typer for the backend, models, storage, and management commands; use migration scripts for schema changes. Add authorization boundaries, a modest background sync design, and database migration discipline without rebuilding existing working features.
+- **Respect integration ownership:** Inboxtend owns mail accounts, attachments, email tasks and existing agent execution; OrbitMinder consumes a minimal **read-only** task feed; AgentSteers only handles separately authorized work. Never double-dispatch a task, expose credentials, or treat mocked statuses as real results.
+
 ## Privacy and safeguards
 
 - Read-only by default; never send emails, modify repositories or execute agent tasks without explicit user approval.
