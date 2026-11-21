@@ -142,3 +142,16 @@ SQLite v6 为每个用户与 Inboxtend 账号记录最后一次完整快照时�
 A complete source snapshot with a timestamp later than the trusted OrbitMinder server clock is rejected **before** the checkpoint or cached task presence is changed. This prevents a future-dated checkpoint from blocking subsequent valid source snapshots. Check the upstream clock if an operator sees this rejection; do not silently rewrite source timestamps. A source response is not considered a successful live sync merely because the code path exists.
 
 完整来源快照若时间晚于 OrbitMinder 服务器的当前时间，将在更新检查点和任务存在性之前被拒绝，避免未来时间锁住后续合法同步。出现此错误时应核对上游时钟，不应静默改写来源时间。该代码尚未经过测试、联调或部署验证。
+
+## Operator signing handoff / 管理员签名交接
+
+OrbitMinder now offers a private, offline producer of the exact same version-1 event envelope verified by `orbitminder.import_agent_events`. The administrator must **independently verify the event origin** and prepare an unsigned JSON file with exactly `schema_version: 1` and an `observations` array. The following uses the trusted server environment, with an owner ID and an HMAC secret of at least 32 UTF-8 bytes:
+
+```sh
+python -m orbitminder.sign_agent_events --file /private/reviewed-events.json --output /private/signed-events.json
+python -m orbitminder.import_agent_events --file /private/signed-events.json
+```
+
+Set `ORBITMINDER_OWNER_ID` and `ORBITMINDER_AGENT_EVENT_SIGNING_KEY` privately in the server process environment. The signer does not overwrite existing outputs, creates its output with mode `0600`, and refuses oversized, malformed, future-dated or unreviewed-format input. The importer additionally requires a private initialized SQLite database (`ORBITMINDER_DB_PATH`), an existing matching owner-scoped AgentSteers job, consistent mode, and non-conflicting event keys. **Signed means shared-key authenticated, not verified as originating from AgentSteers.** No AgentSteers API or live subscription has been assumed or activated.
+
+管理员可离线生成与导入端一致的版本 1 签名事件封装文件。先独立核实事件真实来源，再准备仅含 `schema_version: 1` 与 `observations` 的人工审核 JSON。通过私有环境变量提供 `ORBITMINDER_OWNER_ID` 和长度至少 32 字节的 `ORBITMINDER_AGENT_EVENT_SIGNING_KEY`，执行上面的本地签名与导入命令。签名输出为新建私有文件，不覆盖已有文件；导入仍检查账号内已有 AgentSteers Job、执行模式和事件冲突。**签名不能证明事件来自 AgentSteers 官方系统。** 本轮没有运行测试、联调或部署。
