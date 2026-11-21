@@ -103,6 +103,8 @@ Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006–009 s
 
 **2026-11-21 Agent overview UI:** The cached Dashboard now groups independently stored AgentSteers job records by project and displays a limited recent-observation list, separating `real` from `mock` records. This is a read-only **per-job state snapshot**, not a full event timeline or proof that referenced jobs executed. Only locally cached tasks and matched same-owner records are displayed. No runtime tests, live integration, or deployment were performed.
 
+**2026-11-21 event timeline source update:** Added an additive v3 SQLite table for append-only AgentSteers job observations, owner-scoped storage/read helpers, and a cached Dashboard timeline distinct from latest job-state snapshots. Only explicitly ingested observations for already-stored jobs can appear. No event-source ingestion pipeline, live verification, automated tests, or deployment has been completed.
+
 ### Next milestone — durable, trustworthy project data (P0)
 
 - [ ] **OM-006 — Define normalized models (SOURCE IMPLEMENTED, NOT LIVE-VERIFIED):** owner-scoped SQLite tables for project, source record, sync run, follow-up and agent activity are now in [`migrations/0001_initial.sql`](migrations/0001_initial.sql), with semantics in [`docs/data-model.md`](docs/data-model.md). **Remaining before checking complete:** manually verify migration and owner isolation in an authorized environment; schema is not yet deployed.
@@ -259,6 +261,9 @@ python3 -m orbitminder.cli --github-owner scyllarusllc --github-activity --githu
 不启用 `--github-activity` 时，只读取仓库元数据，不读取 PR／Issue，也不判断实际优先级。启用后，每个所检查的仓库最多额外执行三类 GitHub 只读请求；默认只检查前 30 个返回仓库中最多 10 个未归档仓库。列表达到 100 条可能未完整分页，因此计数可能只是下限。API 出错会报错，不应误报为空。未提供 Token 时只读取公共仓库；Token 从环境变量读取，不写入文件或日志。已有的 ChatGPT “Mission Control” 定时任务与此独立，不做修改。
 
 ### 📋 开发进度与待办
+
+**2026-11-21 Agent 事件时间线代码：** 已新增 SQLite v3 只追加事件表、按用户隔离的存取方法，以及 Dashboard 中与 Job 最新状态快照分开的事件时间线。只有可信导入方写入、且关联已存 Job 的观察事件才会显示；暂未连接外部事件来源，也未运行测试、联调或部署验证。
+
 
 **2026-11-21 Agent 汇总面板：** Dashboard 新增跨项目 AgentSteers 已存记录汇总，显示匹配数量、`real` 与 `mock` 分类，以及有限条最近观察记录。该页面展示每个 Job 的**状态快照**，不是完整事件时间线；仅有任务中的 Job ID 不能证明已执行。只读、仅限同一用户已存数据，未运行测试、真实联调或部署。
 
