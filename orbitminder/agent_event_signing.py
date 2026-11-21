@@ -34,7 +34,9 @@ def verify_envelope(payload: dict, owner_id: str, secret: str | None) -> list:
     if not isinstance(observations, list):
         raise ValueError("observations must be an array")
 
-    if secret:
+    if secret is not None:
+        if not isinstance(secret, str) or not secret.strip():
+            raise ValueError("configured signing secret is empty")
         if len(secret.encode("utf-8")) < 32:
             raise ValueError("signing secret too short")
         if set(payload) != {"schema_version", "observations", "owner_id", "signature"}:
