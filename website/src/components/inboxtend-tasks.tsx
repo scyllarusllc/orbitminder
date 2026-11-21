@@ -69,6 +69,7 @@ export default function InboxtendTasks() {
   const [query, setQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState("all");
+  const [eventMode, setEventMode] = useState<"all" | "real" | "mock">("all");
 
   const projects = useMemo(() => {
     const summaries = new Map<string, { total: number; open: number; high: number }>();
@@ -113,6 +114,16 @@ export default function InboxtendTasks() {
     };
   }, [snapshot]);
 
+  const visibleEvents = useMemo(() => {
+    const tasks = new Map((snapshot?.items ?? []).map(task => [task.external_id, task]));
+    return (snapshot?.agent_events ?? []).filter(event => {
+      const task = tasks.get(event.task_id);
+      return Boolean(task) &&
+        (projectFilter === "all" || (task?.project_label?.trim() || "Uncategorized") === projectFilter) &&
+        (eventMode === "all" || event.mode === eventMode);
+    }).slice(0, 15);
+  }, [snapshot, projectFilter, eventMode]);
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     const rows = (snapshot?.items ?? []).filter(task =>
@@ -152,7 +163,9 @@ export default function InboxtendTasks() {
       const result: unknown = await response.json();
       if (!response.ok || !result || typeof result !== "object" ||
           !("mode" in result) || result.mode !== "cached_inboxtend_tasks" ||
-          !("items" in result) || !Array.isArray(result.items)) throw new Error();
+          !("items" in result) || !Array.isArray(result.items) ||
+          !("agent_events" in result) || !Array.isArray(result.agent_events) ||
+          !("agent_activities" in result) || !Array.isArray(result.agent_activities)) throw new Error();
       setSnapshot(result as Snapshot);
       setState("ready");
     } catch { setState("unavailable"); }
@@ -206,11 +219,22 @@ export default function InboxtendTasks() {
             <span className="mt-1 block text-slate-300">{counts.matched} matched · {counts.real} real · {counts.mock} mock</span>
           </li>)}
         </ul>}
-        <h4 className="mt-4 text-xs font-semibold text-slate-200">Persisted event timeline</h4>
-        {snapshot.agent_events.length === 0 ? <p className="mt-2 text-xs text-slate-400">
-          No independently recorded AgentSteers events. Status snapshots below are not a full timeline.
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+          <h4 className="text-xs font-semibold text-slate-200">Persisted event timeline</h4>
+          <label className="text-xs text-slate-300">Execution mode
+            <select value={eventMode} onChange={event => setEventMode(event.target.value as "all" | "real" | "mock")}
+              className="ml-2 rounded-lg border border-white/20 bg-[#11182b] px-2 py-1 text-xs text-white">
+              <option value="all">All modes</option><option value="real">Real</option><option value="mock">Mock</option>
+            </select>
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-slate-400">
+          Showing {visibleEvents.length} stored events (up to 15), using the selected project and execution mode.
+        </p>
+        {visibleEvents.length === 0 ? <p className="mt-2 text-xs text-slate-400">
+          No persisted AgentSteers events match these filters. Status snapshots below are not a full timeline.
         </p> : <ol className="mt-2 space-y-2 border-l border-white/20 pl-4">
-          {snapshot.agent_events.slice(0, 15).map(event => {
+          {visibleEvents.map(event => {
             const task = snapshot.items.find(item => item.external_id === event.task_id);
             return <li key={event.id} className="relative rounded-lg border border-white/10 p-3 text-xs">
               <strong className="block text-white">{event.state} · {event.mode}</strong>
