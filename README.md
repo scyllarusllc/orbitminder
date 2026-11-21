@@ -109,6 +109,8 @@ Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006–009 s
 
 **2026-11-21 timeline filters:** The Dashboard's persisted AgentSteers event list can now be filtered by selected cached project and execution mode (`real` or `mock`). The interface validates that cached event and activity arrays exist, and shows only up to 15 matching stored events. Filtering is client-side and does not establish a live connection. No automated tests, integration, or deployment were performed.
 
+**2026-11-21 signed event import:** The operator-only AgentSteers event importer now verifies optional owner-bound HMAC-SHA256 envelopes. When `ORBITMINDER_AGENT_EVENT_SIGNING_KEY` is set, invalid, missing, or empty-key signatures fail closed. Signing authenticates a holder of the shared secret, not AgentSteers as the original publisher. Without the key, only manually reviewed unsigned imports remain available. No automated tests, live integration, or deployment verification were performed.
+
 ### Next milestone — durable, trustworthy project data (P0)
 
 - [ ] **OM-006 — Define normalized models (SOURCE IMPLEMENTED, NOT LIVE-VERIFIED):** owner-scoped SQLite tables for project, source record, sync run, follow-up and agent activity are now in [`migrations/0001_initial.sql`](migrations/0001_initial.sql), with semantics in [`docs/data-model.md`](docs/data-model.md). **Remaining before checking complete:** manually verify migration and owner isolation in an authorized environment; schema is not yet deployed.
@@ -265,6 +267,9 @@ python3 -m orbitminder.cli --github-owner scyllarusllc --github-activity --githu
 不启用 `--github-activity` 时，只读取仓库元数据，不读取 PR／Issue，也不判断实际优先级。启用后，每个所检查的仓库最多额外执行三类 GitHub 只读请求；默认只检查前 30 个返回仓库中最多 10 个未归档仓库。列表达到 100 条可能未完整分页，因此计数可能只是下限。API 出错会报错，不应误报为空。未提供 Token 时只读取公共仓库；Token 从环境变量读取，不写入文件或日志。已有的 ChatGPT “Mission Control” 定时任务与此独立，不做修改。
 
 ### 📋 开发进度与待办
+
+**2026-11-21 签名校验进度：** 管理员 AgentSteers 事件导入命令已接入按用户绑定的 HMAC-SHA256 签名验证。设置 `ORBITMINDER_AGENT_EVENT_SIGNING_KEY` 后，签名缺失、错误或配置了空密钥都会拒绝。签名仅证明持有共享密钥，不能单独证明事件由 AgentSteers 发出；未启用密钥时仍要求人工核实未签名文件。没有运行测试、真实联调或部署验证。
+
 
 **2026-11-21 时间线筛选：** AgentSteers 事件列表新增按当前项目与 `real` / `mock` 执行模式筛选，并检查返回的事件和活动数组是否存在；最多显示 15 条匹配的本地已存事件。筛选不访问实时服务。本轮仍未运行测试、联调或部署。
 
