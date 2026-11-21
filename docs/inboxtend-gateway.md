@@ -108,3 +108,9 @@ The signed JSON envelope has exactly four top-level fields: `schema_version` (in
 签名 JSON 顶层需恰好有 `schema_version`、`owner_id`、`observations` 和 `signature` 四个字段。由可信生产方使用 `canonical_observations` 的标准化 UTF-8 字节签名，输出 64 位小写十六进制 HMAC 值，接收方按固定 owner 验证。
 
 **Security qualification:** HMAC proves only possession of the shared key, **not** that AgentSteers itself issued a particular event; configure key distribution and event provenance separately. Without this environment variable, the older unsigned *manually reviewed* format remains accepted. No live AgentSteers connector, runtime test, or deployment verification was performed.
+
+## Event consistency hardening / 事件一致性加固
+
+Both single-event and batch observation writes now share the same strict path: a matching owner-scoped stored AgentSteers job is required, the stored `mock`/`real` mode must match, and the event key cannot be reused with altered content. Future-dated observation timestamps are rejected. Previously stored events are not rewritten and no Agent state transitions or dispatches are inferred from imported observations.
+
+单条与批量事件写入现在都使用同一套严格校验：必须存在相同用户下的 AgentSteers Job，`mock`/`real` 模式必须匹配；同一事件标识不能对应不同内容，未来时间戳也会被拒绝。不会修改旧事件、推断 Agent 状态迁移或触发执行。以上均为代码提交，没有运行测试或联调。
