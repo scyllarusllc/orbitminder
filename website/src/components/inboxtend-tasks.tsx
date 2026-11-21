@@ -30,10 +30,20 @@ type AgentActivity = {
   observed_at: string | null;
   updated_at: string;
 };
+type AgentEvent = {
+  id: string;
+  task_id: string;
+  job_id: string;
+  state: string;
+  mode: "mock" | "real";
+  observed_at: string;
+  recorded_at: string;
+};
 type Snapshot = {
   mode: "cached_inboxtend_tasks";
   items: Task[];
   agent_activities: AgentActivity[];
+  agent_events: AgentEvent[];
   sync_state: string;
   last_checked_at: string | null;
   checked_count: number | null;
@@ -196,6 +206,19 @@ export default function InboxtendTasks() {
             <span className="mt-1 block text-slate-300">{counts.matched} matched · {counts.real} real · {counts.mock} mock</span>
           </li>)}
         </ul>}
+        <h4 className="mt-4 text-xs font-semibold text-slate-200">Persisted event timeline</h4>
+        {snapshot.agent_events.length === 0 ? <p className="mt-2 text-xs text-slate-400">
+          No independently recorded AgentSteers events. Status snapshots below are not a full timeline.
+        </p> : <ol className="mt-2 space-y-2 border-l border-white/20 pl-4">
+          {snapshot.agent_events.slice(0, 15).map(event => {
+            const task = snapshot.items.find(item => item.external_id === event.task_id);
+            return <li key={event.id} className="relative rounded-lg border border-white/10 p-3 text-xs">
+              <strong className="block text-white">{event.state} · {event.mode}</strong>
+              <span className="block text-slate-300">{task?.title ?? "Cached task"} · {task?.project_label || "Uncategorized"}</span>
+              <span className="block text-slate-400">Observed {event.observed_at} · recorded {event.recorded_at}</span>
+            </li>;
+          })}
+        </ol>}
         <h4 className="mt-4 text-xs font-semibold text-slate-200">Recently observed records</h4>
         {activityOverview.recent.length === 0 ? <p className="mt-2 text-xs text-slate-400">No matching stored AgentSteers records.</p> :
           <ol className="mt-2 space-y-2">
@@ -297,7 +320,17 @@ export default function InboxtendTasks() {
             <p>Due timezone: <span className="text-white">{task.due_timezone || "Not set"}</span></p>
             <p>Snapshot observed: <span className="text-white">{task.observed_at}</span></p>
             <div className="sm:col-span-2 rounded-lg border border-white/10 p-3">
-              <h4 className="font-semibold text-white">Stored AgentSteers activity</h4>
+              <h4 className="font-semibold text-white">Persisted job events</h4>
+              {(() => {
+                const events = snapshot.agent_events.filter(event =>
+                  event.task_id === task.external_id && event.job_id === task.agent_job_id);
+                return events.length ? <ol className="mt-2 space-y-1">
+                  {events.map(event => <li key={event.id}>
+                    {event.observed_at} · {event.state} · {event.mode}
+                  </li>)}
+                </ol> : <p className="mt-2 text-slate-400">No persisted job events.</p>;
+              })()}
+              <h4 className="mt-3 font-semibold text-white">Stored AgentSteers current activity</h4>
               {(() => {
                 const matches = snapshot.agent_activities.filter(activity =>
                   activity.task_id === task.external_id && activity.job_id === task.agent_job_id);
