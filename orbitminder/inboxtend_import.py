@@ -21,9 +21,9 @@ async def import_task_summaries(
 ) -> dict[str, int | str]:
     """Fetch complete pagination first, then cache summaries.
 
-    Any failed or incomplete fetch is marked failed and leaves existing cache intact.
-    The store's source-record table stores only title, URL, and freshness for now;
-    task status/priority/revision require a separately migrated task snapshot table.
+    A failed or incomplete fetch leaves the previous task snapshot untouched.
+    Validated task metadata is written atomically to the additive v2 table;
+    source revisions prevent older pages overwriting newer cached versions.
     """
     if not isinstance(owner_id, str) or not owner_id.strip():
         raise ValueError("trusted authenticated owner_id is required")
@@ -67,25 +67,17 @@ async def import_task_summaries(
                           last_error="Task feed unavailable or inconsistent")
         raise
 
-    # The existing owner/account-scoped uniqueness constraint makes repeats
-    # idempotent. No deletion is inferred from absence in a page or snapshot.
-    # Store updates are per record; record partial if a write fails.
-    written = 0
+    # Save all task summaries in one transaction. A write failure rolls back
+    # the entire incoming snapshot and leaves cached data available.
     try:
-        for task in items:
-            store.upsert_source(
-                owner_id, provider="inboxtend", account_key=account_key,
-                external_id=task.id, title=task.title,
-                source_url=str(task.source_url) if task.source_url else None,
-                observed_at=task.updated_at.isoformat(),
-                verification_state="verified",
-            )
-            written += 1
+        written = store.save_inboxtend_tasks(owner_id, account_key, items)
     except Exception:
         store.record_sync(owner_id, provider="inboxtend", account_key=account_key,
-                          state="partial", checked_count=written,
-                          last_error="Task cache write interrupted")
+                          state="failed", checked_count=0,
+                          last_error="Task snapshot write failed")
         raise
+    # 'checked_count' counts the records received, including unchanged revisions.
     store.record_sync(owner_id, provider="inboxtend", account_key=account_key,
-                      state="succeeded", checked_count=written)
-    return {"state": "succeeded", "checked_count": written}
+                      state="succeeded", checked_count=len(items))
+    return {"state": "succeeded", "checked_count": len(items),
+            "updated_count": written}
