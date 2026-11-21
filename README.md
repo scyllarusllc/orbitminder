@@ -2,12 +2,26 @@
 
 **Your projects. Always in sight.**
 
-**Read in:** [English](#why) | [中文阅读](#中文说明chinese) · [中文项目简介](#项目简介与当前状态) · [中文开发规则](#开发流程与仓库规则中英文同步)
+**Read in:** [English](#-why) | [中文阅读](#中文说明chinese) · [中文项目简介](#-项目简介与当前状态) · [中文开发规则](#️-开发流程与仓库规则中英文同步)
 
 
 OrbitMinder is an open-source, personal AI project command center. Its goal is to consolidate projects, follow-ups, deadlines and delegated agent work into one daily view.
 
 **Status (2026-11-19):** early, read-only prototype. The Python CLI supports local example JSON and GitHub repository/activity summaries. A Next.js website, Google sign-in code, a protected single-owner GitHub brief API, and an on-demand private dashboard are implemented in source, but production deployment, live Google OAuth and end-to-end behavior are **not verified**. Gmail OAuth connection, Calendar, full cross-source sync and real agent execution are not integrated; a read-only Gmail metadata adapter exists in source. GitHub activity is sampled; it does not prove task completion.
+
+### 🧭 System overview / 系统关系图
+
+> **Target architecture / 目标架构:** The arrows below describe planned integrations, **not confirmed live connections**. / 下图是计划中的集成关系，**不代表已经部署或连通**。
+
+```mermaid
+flowchart TB
+    GH["🐙 GitHub<br/>Commits · PRs · Issues"] -->|"Read-only / 只读"| OM["🧭 OrbitMinder<br/>Projects · Priorities · Dashboard"]
+    IB["📬 Inboxtend<br/>Mail · Attachments · Tasks"] -->|"Planned task feed / 计划中的只读任务接口"| OM
+    AS["🤖 AgentSteers<br/>Authorized jobs · Evidence"] -->|"Planned status feed / 计划中的只读状态接口"| OM
+    USER["👤 User / 用户"] -->|"Review · Approve / 审核与授权"| OM
+```
+
+**Ownership / 职责边界:** Inboxtend owns email tasks and its existing agent runs; AgentSteers owns only separately authorized jobs. OrbitMinder observes and organizes—**never execute a task twice**. / Inboxtend 负责邮件任务及已有 Agent 执行，AgentSteers 仅负责另外授权的任务；OrbitMinder 负责汇总监控，**禁止重复执行同一任务**。
 
 ## Three-product architecture (decision 2026-11-21)
 
@@ -15,7 +29,7 @@ OrbitMinder is an open-source, personal AI project command center. Its goal is t
 
 [Architecture diagram, ownership rules and integration milestones](docs/architecture.md).
 
-## Why
+## 🎯 Why
 
 Your projects may live across GitHub, Gmail, calendar, personal planning and multiple AI agents. OrbitMinder is intended to answer:
 
@@ -23,7 +37,7 @@ Your projects may live across GitHub, Gmail, calendar, personal planning and mul
 2. What are my three best next actions?
 3. What is waiting, blocked, or due soon?
 
-## Quick start
+## 🚀 Quick start
 
 Requires Python 3.10+; no external dependencies.
 
@@ -51,7 +65,7 @@ python3 -m orbitminder.cli --github-owner scyllarusllc --github-activity --githu
 The GitHub inventory reads repository metadata only (name, URL, archived state, last push, visibility and fetch timestamp). The current daily brief includes those repositories as active project records with a generic review action. Without --github-activity it does **not** fetch pull requests/issues or infer actual task priority. With --github-activity, it makes up to three additional read-only GitHub API requests per checked repository (commits, open PRs, open issues); it excludes PRs from the issue count, sorts checked project recommendations by simple open-item heuristics, and never claims work is complete. This is a triage heuristic, not AI analysis. To limit API use, activity checking defaults to the first 10 nonarchived repositories out of the first 30 returned repositories; other repositories are not activity-verified. Counts are lower bounds if a query returns 100 items, since pagination of activity is not implemented. An HTTP/API error stops the command rather than returning a misleading empty inventory. Without GITHUB_TOKEN, only public repos are included. With it, only repositories owned by the selected account and accessible to that token are included. The token is read from the environment and not persisted.
  The existing ChatGPT "Mission Control" daily automation is separate and remains unchanged.
 
-## Development progress and next tasks
+## 📋 Development progress and next tasks
 
 Updated **2026-11-19** from the `main` branch. **Current focus:** OM-006–009 storage/freshness/dashboard read path in source; OM-011 Gmail metadata adapter and independent PKCE OAuth connection UI in source. Live consent and end-to-end Gmail sync are still pending. Live data import and production deployment remain pending; automated test suites were removed at the owner's request. This checklist reports **source-code implementation**, not production readiness. A checked box is not a claim of successful deployment or live integration. Work in the order below; keep the read-only, self-hostable MVP as the default.
 
@@ -114,7 +128,7 @@ orbitminder/
 ```
 
 
-## Development workflow and repository rules
+## 🛠️ Development workflow and repository rules
 
 These rules apply to OrbitMinder development, including the FastAPI + SQLModel prototype work:
 
@@ -127,7 +141,7 @@ These rules apply to OrbitMinder development, including the FastAPI + SQLModel p
 - **Current direction:** retain the existing Next.js UI; incrementally add FastAPI, SQLModel, SQLite and Typer for the backend, models, storage, and management commands; use migration scripts for schema changes. Add authorization boundaries, a modest background sync design, and database migration discipline without rebuilding existing working features.
 - **Respect integration ownership:** Inboxtend owns mail accounts, attachments, email tasks and existing agent execution; OrbitMinder consumes a minimal **read-only** task feed; AgentSteers only handles separately authorized work. Never double-dispatch a task, expose credentials, or treat mocked statuses as real results.
 
-## Privacy and safeguards
+## 🔒 Privacy and safeguards
 
 - Read-only by default; never send emails, modify repositories or execute agent tasks without explicit user approval.
 - Mark stale/unavailable sources as unverified, never invent completion.
@@ -145,7 +159,7 @@ Maintained by Scyllarus LLC. Proposed website: orbitminder.com (domain ownership
 
 > 本节是上述英文 README 的中文对照。技术命令、文件路径、任务编号和项目名称保留原文。英文与中文描述均应随项目进展同步更新。
 
-### 项目简介与当前状态
+### 🌟 项目简介与当前状态
 
 **OrbitMinder — 让每个项目的进展清晰可见。**
 
@@ -153,7 +167,7 @@ OrbitMinder 是一个开源的个人 AI 项目控制中心。它把分散在 Git
 
 **截至 2026-11-19 的已记录状态：** 项目仍处于以只读为主的早期原型阶段。Python CLI 支持示例 JSON 和 GitHub 仓库／活动摘要。Next.js 网站、Google 登录代码、仅限所有者访问的 GitHub 简报 API 和按需刷新的私有 Dashboard 已在源码中实现，但生产部署、真实 Google OAuth 和端到端运行**尚未验证**。独立 Gmail 元数据只读适配器已有代码，但 Gmail 端到端同步、Calendar、跨来源完整同步及真实 Agent 执行尚未集成。GitHub 活动属于采样信息，不能据此断言任务已完成。
 
-### 三项目架构（2026-11-21 决定）
+### 🧩 三项目架构（2026-11-21 决定）
 
 **统一查看进度，各系统各司其职：**
 
@@ -165,7 +179,7 @@ OrbitMinder 是一个开源的个人 AI 项目控制中心。它把分散在 Git
 
 详见 [架构、数据归属和集成里程碑](docs/architecture.md)。
 
-### 我们要解决的问题
+### 🎯 我们要解决的问题
 
 每天打开 OrbitMinder，就能回答三个问题：
 
@@ -173,7 +187,7 @@ OrbitMinder 是一个开源的个人 AI 项目控制中心。它把分散在 Git
 2. 今天最应该优先处理哪三件事？
 3. 哪些任务正在等待回复、遇到阻碍，或者快到截止日期？
 
-### 快速开始
+### 🚀 快速开始
 
 当前 CLI 需要 Python 3.10+，基本示例不需要额外依赖：
 
@@ -198,7 +212,7 @@ python3 -m orbitminder.cli --github-owner scyllarusllc --github-activity --githu
 
 不启用 `--github-activity` 时，只读取仓库元数据，不读取 PR／Issue，也不判断实际优先级。启用后，每个所检查的仓库最多额外执行三类 GitHub 只读请求；默认只检查前 30 个返回仓库中最多 10 个未归档仓库。列表达到 100 条可能未完整分页，因此计数可能只是下限。API 出错会报错，不应误报为空。未提供 Token 时只读取公共仓库；Token 从环境变量读取，不写入文件或日志。已有的 ChatGPT “Mission Control” 定时任务与此独立，不做修改。
 
-### 开发进度与待办
+### 📋 开发进度与待办
 
 以下状态来自 README 在 **2026-11-19** 的进度记录；勾选只表示**源码已实现**，不等于已部署或验证。后续须依据真实提交与手动检查更新。
 
@@ -242,7 +256,7 @@ python3 -m orbitminder.cli --github-owner scyllarusllc --github-activity --githu
 - 观察 Agent 进度；真实委派须明确、分范围授权。
 - 保持数据隔离、自托管优先，并明确标记陈旧与未验证来源。
 
-### 开发流程与仓库规则（中英文同步）
+### 🛠️ 开发流程与仓库规则（中英文同步）
 
 以下规则适用于 OrbitMinder，包括 FastAPI + SQLModel 原型阶段：
 
@@ -256,7 +270,7 @@ python3 -m orbitminder.cli --github-owner scyllarusllc --github-activity --githu
 - **尊重系统边界：** Inboxtend 管理邮箱、附件、邮件任务及已有 Agent 执行；OrbitMinder 只读取必要的任务摘要；AgentSteers 仅处理另外批准的执行工作。禁止重复执行、泄露凭证或将模拟状态冒充真实结果。
 - **文档双语维护：** 重大功能、架构决策、开发规则与验收状态改变时，更新 README 中的英文及中文说明，避免两种语言表达不一致。
 
-### 隐私与安全
+### 🔒 隐私与安全
 
 - 默认只读；未经明确许可，不发邮件、不修改外部仓库、不执行 Agent 任务。
 - 陈旧或不可用的数据标记为未验证，不能凭推测宣布任务完成。
