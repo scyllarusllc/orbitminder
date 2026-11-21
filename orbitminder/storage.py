@@ -18,6 +18,7 @@ MIGRATIONS = {
     3: Path(__file__).resolve().parent.parent / "migrations" / "0003_agent_activity_events.sql",
     4: Path(__file__).resolve().parent.parent / "migrations" / "0004_agent_event_provenance.sql",
     5: Path(__file__).resolve().parent.parent / "migrations" / "0005_inboxtend_presence.sql",
+    6: Path(__file__).resolve().parent.parent / "migrations" / "0006_inboxtend_snapshot_checkpoint.sql",
 }
 
 
@@ -248,16 +249,24 @@ class ProjectStore:
         with self._connect() as db:
             if snapshot_stamp is not None:
                 latest = db.execute(
-                    """SELECT MAX(last_seen_snapshot) FROM inboxtend_tasks
+                    """SELECT snapshot_at FROM inboxtend_snapshot_checkpoints
                        WHERE owner_id=? AND account_key=?""",
                     (owner_id, account_key),
-                ).fetchone()[0]
-                if latest and latest > snapshot_stamp:
-                    raise ValueError("older snapshot cannot replace newer presence")
+                ).fetchone()
+                if latest and latest["snapshot_at"] >= snapshot_stamp:
+                    raise ValueError("snapshot must be newer than last complete snapshot")
                 db.execute(
                     """UPDATE inboxtend_tasks SET presence_state='not_returned'
                        WHERE owner_id=? AND account_key=?""",
                     (owner_id, account_key),
+                )
+                db.execute(
+                    """INSERT INTO inboxtend_snapshot_checkpoints
+                       (owner_id,account_key,snapshot_at,recorded_at)
+                       VALUES (?,?,?,?)
+                       ON CONFLICT(owner_id,account_key) DO UPDATE SET
+                         snapshot_at=excluded.snapshot_at,recorded_at=excluded.recorded_at""",
+                    (owner_id, account_key, snapshot_stamp, now),
                 )
             for task in tasks:
                 values = (
@@ -318,7 +327,9 @@ class ProjectStore:
                           revision,observed_at
                    FROM inboxtend_tasks
                    WHERE owner_id=? AND account_key=?
-                   ORDER BY source_updated_at DESC,external_id LIMIT ?""",
+                   ORDER BY CASE presence_state
+                     WHEN 'present' THEN 0 WHEN 'unverified' THEN 1 ELSE 2 END,
+                          source_updated_at DESC,external_id LIMIT ?""",
                 (owner_id, account_key, limit),
             )]
 
