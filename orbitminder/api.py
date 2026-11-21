@@ -7,12 +7,14 @@ from __future__ import annotations
 
 import os
 from urllib.parse import urlsplit
+from pathlib import Path
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Response, status
 from pydantic import ValidationError
 
 from .inboxtend_contract import InboxtendTaskPage
+from .storage import ProjectStore
 
 app = FastAPI(
     title="OrbitMinder private task API",
@@ -75,3 +77,29 @@ async def read_tasks(
         return InboxtendTaskPage.model_validate(result.json())
     except (httpx.RequestError, ValueError, ValidationError):
         raise HTTPException(status_code=502, detail="Upstream task feed invalid or unavailable")
+
+
+@app.get("/api/v1/inboxtend/cached-tasks", dependencies=[Depends(_authorized)])
+def cached_tasks(
+    response: Response,
+    limit: int = Query(default=100, ge=1, le=500),
+):
+    """Return only configured, owner-scoped cached task summaries."""
+    response.headers["Cache-Control"] = "private, no-store"
+    owner_id = _config("ORBITMINDER_OWNER_ID")
+    account_key = _config("INBOXTEND_ACCOUNT_KEY")
+    db_path = Path(_config("ORBITMINDER_DB_PATH"))
+    if not db_path.is_absolute() or not db_path.is_file():
+        raise HTTPException(status_code=503, detail="Task cache unavailable")
+    store = ProjectStore(db_path)
+    try:
+        tasks = store.list_inboxtend_tasks(owner_id, account_key, limit=limit)
+        freshness = store.latest_sync(owner_id, provider="inboxtend",
+                                      account_key=account_key)
+    except (ValueError, OSError):
+        raise HTTPException(status_code=503, detail="Task cache unavailable")
+    # A missing or failed import is not reported as a current successful sync.
+    return {"items": tasks,
+            "sync_state": freshness["state"] if freshness else "unchecked",
+            "last_checked_at": freshness["finished_at"] if freshness else None,
+            "last_error": freshness["last_error"] if freshness else None}
