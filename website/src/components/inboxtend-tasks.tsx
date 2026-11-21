@@ -21,9 +21,19 @@ type Task = {
   source_updated_at: string;
   revision: number;
 };
+type AgentActivity = {
+  task_id: string;
+  job_id: string;
+  provider: string;
+  mode: "mock" | "real";
+  state: string;
+  observed_at: string | null;
+  updated_at: string;
+};
 type Snapshot = {
   mode: "cached_inboxtend_tasks";
   items: Task[];
+  agent_activities: AgentActivity[];
   sync_state: string;
   last_checked_at: string | null;
   checked_count: number | null;
@@ -226,6 +236,19 @@ export default function InboxtendTasks() {
             <p>Agent job: <span className="break-all text-white">{task.agent_job_id || "None"}</span></p>
             <p>Due timezone: <span className="text-white">{task.due_timezone || "Not set"}</span></p>
             <p>Snapshot observed: <span className="text-white">{task.observed_at}</span></p>
+            <div className="sm:col-span-2 rounded-lg border border-white/10 p-3">
+              <h4 className="font-semibold text-white">Stored AgentSteers activity</h4>
+              {(() => {
+                const matches = snapshot.agent_activities.filter(activity =>
+                  activity.task_id === task.external_id && activity.job_id === task.agent_job_id);
+                return matches.length ? <ul className="mt-2 space-y-2">
+                  {matches.map(activity => <li key={activity.provider + ":" + activity.job_id}>
+                    {activity.provider} · {activity.mode} · {activity.state}
+                    <span className="block text-slate-400">Observed {activity.observed_at ?? "not recorded"} · updated {activity.updated_at}</span>
+                  </li>)}
+                </ul> : <p className="mt-2 text-slate-400">No matching stored activity. A job ID alone does not confirm execution.</p>;
+              })()}
+            </div>
             <p className="sm:col-span-2 text-slate-400">Metadata only. This view cannot approve, reassign, or execute work.</p>
           </div>}
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
