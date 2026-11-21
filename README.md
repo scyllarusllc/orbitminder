@@ -135,3 +135,131 @@ These rules apply to OrbitMinder development, including the FastAPI + SQLModel p
 **License:** GNU Affero General Public License v3.0 (AGPL-3.0-only). See [LICENSE](LICENSE). Commercial services may be offered subject to the AGPL's conditions; an additional commercial license requires the necessary rights from all contributors.
 
 Maintained by Scyllarus LLC. Proposed website: orbitminder.com (domain ownership/deployment not verified in this repository).
+
+---
+
+## 中文说明（Chinese）
+
+> 本节是上述英文 README 的中文对照。技术命令、文件路径、任务编号和项目名称保留原文。英文与中文描述均应随项目进展同步更新。
+
+### 项目简介与当前状态
+
+**OrbitMinder — 让所有项目始终一目了然。**
+
+OrbitMinder 是一个开源的个人 AI 项目控制中心，目标是在一个日常视图中汇总项目、待跟进事项、截止日期和委派给 Agent 的工作。
+
+**截至 2026-11-19 的已记录状态：** 项目仍处于以只读为主的早期原型阶段。Python CLI 支持示例 JSON 和 GitHub 仓库／活动摘要。Next.js 网站、Google 登录代码、仅限所有者访问的 GitHub 简报 API 和按需刷新的私有 Dashboard 已在源码中实现，但生产部署、真实 Google OAuth 和端到端运行**尚未验证**。独立 Gmail 元数据只读适配器已有代码，但 Gmail 端到端同步、Calendar、跨来源完整同步及真实 Agent 执行尚未集成。GitHub 活动属于采样信息，不能据此断言任务已完成。
+
+### 三项目架构（2026-11-21 决定）
+
+**统一监控、分布式执行：**
+
+- **Inboxtend：** 独立的邮件与任务系统，继续负责邮箱、邮件正文与附件、原生邮件任务及其现有执行流程。
+- **OrbitMinder：** 可选的跨项目控制中心，汇总优先级、状态和来源链接；默认只读，不重新实现 Inboxtend 的邮箱同步。
+- **AgentSteers：** 处理获得明确授权、且尚未由 Inboxtend 执行的独立任务。**同一任务绝不能重复执行。**
+
+计划通过带身份认证的 **Inboxtend 只读任务摘要 API** 集成。现有独立 Gmail 适配器仅作为可选代码保留，并非已验证的集成。Inboxtend 与 AgentSteers 目前仓库中的桥接仍为 **mock（模拟）**；OrbitMinder 尚未实际接入这两个系统。
+
+详见 [架构、数据归属和集成里程碑](docs/architecture.md)。
+
+### 我们要解决的问题
+
+每天在一处回答：
+
+1. 与昨天相比，哪些项目发生了变化？
+2. 现在最值得做的三件事是什么？
+3. 什么任务正在等待、受阻或临近截止日期？
+
+### 快速开始
+
+当前 CLI 需要 Python 3.10+，基本示例不需要额外依赖：
+
+```bash
+python3 -m orbitminder.cli --data examples/projects.json
+```
+
+此命令使用**示例数据**，不是实时同步。
+
+**GitHub 仓库读取（只读）：**
+
+```bash
+# 公共仓库
+python3 -m orbitminder.cli --github-owner scyllarusllc
+
+# 访问有权限的私有仓库时，可在本地环境中配置最小权限的 GITHUB_TOKEN
+python3 -m orbitminder.cli --github-owner scyllarusllc --github-limit 100
+
+# 采样最近 7 天的提交、开放 PR 和 Issue
+python3 -m orbitminder.cli --github-owner scyllarusllc --github-activity --github-limit 20 --activity-max-repos 10 --activity-days 7
+```
+
+不启用 `--github-activity` 时，只读取仓库元数据，不读取 PR／Issue，也不判断实际优先级。启用后，每个所检查的仓库最多额外执行三类 GitHub 只读请求；默认只检查前 30 个返回仓库中最多 10 个未归档仓库。列表达到 100 条可能未完整分页，因此计数可能只是下限。API 出错会报错，不应误报为空。未提供 Token 时只读取公共仓库；Token 从环境变量读取，不写入文件或日志。已有的 ChatGPT “Mission Control” 定时任务与此独立，不做修改。
+
+### 开发进度与待办
+
+以下状态来自 README 在 **2026-11-19** 的进度记录；勾选只表示**源码已实现**，不等于已部署或验证。后续须依据真实提交与手动检查更新。
+
+**源码已完成：**
+- [x] **OM-001：** CLI 项目简报，支持示例输入、下一步建议、等待／受阻／到期摘要与 JSON 输出。
+- [x] **OM-002：** GitHub 只读仓库清单、抽样提交、开放 PR／Issue 和来源链接。
+- [x] **OM-003：** Next.js 网站基础、Google 登录集成代码、Dashboard 保护与所有者允许名单检查。
+- [x] **OM-004：** 经过认证的按需 GitHub Dashboard API 和手动刷新界面。
+- [x] **OM-005：** Dashboard 活动、建议、等待／受阻／到期和未验证来源展示；不代表线上可用。
+
+**P0：可靠的数据与发布基础**
+- [ ] **OM-006：** 已有按所有者隔离的 SQLite 标准化表与迁移脚本；仍需在授权环境手动确认迁移和隔离，尚未部署。
+- [ ] **OM-007：** 已有 `orbitminder/storage.py` 的存储／去重代码；仍需接入真实后端并验证重启及所有者隔离。
+- [ ] **OM-008：** 已有同步时间、部分成功／失败、陈旧数据状态的后端逻辑；仍需验证界面和接口不会将旧数据当成实时数据。
+- [ ] **OM-009：** 已有 `saved_overview.py`、`/api/saved-projects` 和 SavedProjects 面板；仍需真实私有数据库、登录权限和浏览器行为验证。
+- [ ] **OM-010：** 手动发布检查：数据库迁移、数据隔离、失败处理、登录与界面。按项目要求**不运行自动化测试套件**。
+
+**P1：邮件、日历和统一简报**
+- [ ] **OM-011：** Gmail 只读元数据适配器、导入逻辑、PKCE OAuth 授权与加密凭证保管代码已存在；真实授权、令牌刷新后的同步、导入状态及手动验证仍未完成。尚未访问真实邮箱。已有 Inboxtend 的部署应优先使用其只读任务接口，避免重复 Gmail 同步。
+- [ ] **OM-012：** 根据可信来源提出邮件跟进建议，须由用户审核后才能保存或委派。
+- [ ] **OM-013：** 只读日历／截止日期接入，保留原始时区、来源及同步新鲜度。
+- [ ] **OM-014：** 汇总 GitHub、邮件、日历和手动任务，去重并解释推荐理由。
+
+**P2：Agent 监控与授权执行**
+- [ ] **OM-015：** AgentSteers 只读状态适配器；必须把模拟状态与真实执行状态区分开。
+- [ ] **OM-016：** 委派前核对任务、执行目标、权限、资源与用户明确批准；邮件内容本身不构成授权。
+- [ ] **OM-017：** 真实执行接入须另行验证身份、权限、幂等、取消、审计和端到端安全；验证前保持禁用。
+
+**公开发布前的 P0 门槛**
+- [ ] **OM-018：** 验证真实 OAuth、私密配置、会话安全、HTTPS、部署及回滚。
+- [ ] **OM-019：** 文档化备份、迁移回滚、API 限流、同步错误和数据保留机制。
+
+原先记录的实现顺序是 OM-006 → OM-010，然后 OM-011 → OM-014，再到 OM-015 → OM-017。**新的原型技术方向**已确定为 Next.js + FastAPI + SQLModel + SQLite + Typer，先接入 Inboxtend 只读任务，不急于实现执行操作。技术选型属于计划，不应误标成已经落地。自动化测试文件／测试专用工作流已按要求移除，现有 Web lint、类型检查与构建配置仍可保留。
+
+### MVP 范围
+
+- 用统一项目／待办记录表示任务，并保留来源 URL 和核验时间。
+- GitHub 元数据与部分活动统计只读可用；更深入的提交／PR 分析及其他来源逐步完善。
+- 显示建议优先级、截止日期和等待回复的事项。
+- 提供每日简报及个人 Dashboard。
+- 观察 Agent 进度；真实委派须明确、分范围授权。
+- 保持数据隔离、自托管优先，并明确标记陈旧与未验证来源。
+
+### 开发流程与仓库规则（中英文同步）
+
+以下规则适用于 OrbitMinder，包括 FastAPI + SQLModel 原型阶段：
+
+- **小步开发、频繁提交：** 每完成一个独立且完整的改动，就及时提交到 `main`；不要等整个里程碑结束才保存。
+- **保护现有成果：** 修改前检查分支、文件最新版本和相关代码；不得覆盖不相关的工作；有冲突要先解决，禁止强制覆盖。
+- **清晰的提交记录：** 采用简洁、可理解的 Commit 信息，例如 `feat(api): add FastAPI backend`；不同功能分开提交。
+- **可核实的进度汇报：** 每个功能节点报告实际修改、Commit SHA／链接、未完成事项和已做的手动检查。**提交成功不代表部署成功，也不代表功能已验证。**
+- **不运行自动化测试套件：** 遵循项目要求，采用适当的手动检查和代码审查；未经验证的行为不能标记为已测试或线上可用。
+- **自托管优先：** 保持可独立部署、简单维护；当前阶段不引入 Docker。
+- **技术方向：** 保留 Next.js 前端，逐步加入 FastAPI、SQLModel、SQLite、Typer；通过迁移脚本管理数据库结构，并规划权限边界、轻量后台同步与数据库迁移，不重写已经正常工作的功能。
+- **尊重系统边界：** Inboxtend 管理邮箱、附件、邮件任务及已有 Agent 执行；OrbitMinder 只读取必要的任务摘要；AgentSteers 仅处理另外批准的执行工作。禁止重复执行、泄露凭证或将模拟状态冒充真实结果。
+- **文档双语维护：** 重大功能、架构决策、开发规则与验收状态改变时，更新 README 中的英文及中文说明，避免两种语言表达不一致。
+
+### 隐私与安全
+
+- 默认只读；未经明确许可，不发邮件、不修改外部仓库、不执行 Agent 任务。
+- 陈旧或不可用的数据标记为未验证，不能凭推测宣布任务完成。
+- Token 不得放入源码或日志；邮件及第三方内容视为不可信输入。
+- 品牌、域名和商标核验与技术实现分开处理。
+
+**许可证：** GNU Affero General Public License v3.0（AGPL-3.0-only），详见 [LICENSE](LICENSE)。商业服务仍须遵守许可证要求，额外商业授权须具备相关贡献者的必要权利。
+
+**维护方：** Scyllarus LLC。拟使用网站：orbitminder.com（仓库尚未验证域名所有权或部署状态）。
