@@ -126,6 +126,20 @@ export default function InboxtendTasks() {
     }).slice(0, 15);
   }, [snapshot, projectFilter, eventMode]);
 
+  const agentDiscrepancies = useMemo(() => {
+    const activities = snapshot?.agent_activities ?? [];
+    return (snapshot?.items ?? []).flatMap(task => {
+      if (task.executor !== "agentsteers" || !task.agent_job_id) return [];
+      const matched = activities.find(activity =>
+        activity.task_id === task.external_id && activity.job_id === task.agent_job_id);
+      if (!matched) return [{ task, kind: "missing" as const, stored: null }];
+      if (task.agent_status && task.agent_status.trim().toLowerCase() !== matched.state.trim().toLowerCase()) {
+        return [{ task, kind: "different" as const, stored: matched }];
+      }
+      return [];
+    });
+  }, [snapshot]);
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     const rows = (snapshot?.items ?? []).filter(task =>
@@ -206,6 +220,33 @@ export default function InboxtendTasks() {
       {snapshot.sync_state !== "succeeded" && <p className="mt-2 text-sm text-amber-200">
         Cached data may be incomplete or stale. {snapshot.last_error ? "Latest sync: " + snapshot.last_error : ""}
       </p>}
+      <section className="mt-4 rounded-xl border border-amber-200/20 p-4" aria-labelledby="agent-discrepancies-heading">
+        <h3 id="agent-discrepancies-heading" className="text-sm font-semibold text-amber-100">
+          Agent status reconciliation · {agentDiscrepancies.length} items need review
+        </h3>
+        <p className="mt-1 text-xs text-slate-300">
+          Comparing cached task claims to separately stored job snapshots. Differences can reflect delays,
+          different status vocabularies, or incomplete history; they do not prove an execution failure.
+        </p>
+        {agentDiscrepancies.length === 0 ? <p className="mt-2 text-xs text-slate-400">
+          No missing or differing matched AgentSteers snapshots among loaded tasks. This does not verify execution.
+        </p> : <ul className="mt-3 space-y-2 text-xs">
+          {agentDiscrepancies.slice(0, 10).map(({ task, kind, stored }) => <li
+            key={task.external_id} className="rounded-lg border border-white/10 p-3">
+            <strong className="block break-words text-white">{task.title}</strong>
+            <span className="block text-amber-100">
+              {kind === "missing" ? "No independently stored matching job" :
+                `Task reports "${task.agent_status}"; stored job reports "${stored?.state}"`}
+            </span>
+            {stored && <span className="block text-slate-400">
+              Stored observation: {stored.observed_at ?? "not recorded"}
+            </span>}
+          </li>)}
+        </ul>}
+        {agentDiscrepancies.length > 10 && <p className="mt-2 text-xs text-slate-400">
+          Showing first 10 of {agentDiscrepancies.length} review items.
+        </p>}
+      </section>
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Cached task totals">
         {[
           { label: "New", count: snapshot.items.filter(task => task.status === "new").length },
