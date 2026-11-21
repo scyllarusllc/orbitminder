@@ -4,20 +4,23 @@
 
 OrbitMinder is the **optional cross-project control plane**. Inboxtend is the established email-and-task product and remains operational without OrbitMinder. AgentSteers provides an independent, reusable agent execution service for work that is **not already owned/executed by Inboxtend**, or is explicitly delegated to it. Do not route an already-running Inboxtend job into AgentSteers again.
 
-## Target architecture
+## Target architecture — bidirectional monitoring and control
+
+**Decision (2026-11-21):** OrbitMinder will be a bidirectional control center, not only a read-only monitor. Initial integration remains read-only; mutation/delegation endpoints are future milestones enabled only after explicit approvals and server-side verification.
 
 ```mermaid
 flowchart TB
-  U["User · review and approve"] --> OM["OrbitMinder · optional control center<br/>Projects / priorities / approvals / unified status"]
-  OM <-->|"Read-only task summaries, source links, freshness<br/>explicitly approved commands only"| IB["Inboxtend · existing email/work system<br/>Gmail + IMAP / attachments / email tasks / existing agents"]
-  OM <-->|"Read-only execution status / audited approved delegation"| AS["AgentSteers · reusable execution service<br/>job ownership / execution / result evidence"]
-  IB <-->|"Existing opt-in mock MCP bridge<br/>future scoped delegation only if needed"| AS
-  GH["GitHub · commits / PRs / issues"] -->|"Read-only activity"| OM
-  CAL["Calendar / other providers"] -.->|"Future read-only adapters"| OM
-  MAIL["Gmail / IMAP"] -->|"Account sync owned by Inboxtend"| IB
+  U["User"] -->|"Review and approve"| OM["OrbitMinder<br/>Status and control"]
+  GH["GitHub"] -->|"Read-only activity"| OM
+  IB["Inboxtend"] -->|"Task summaries"| OM
+  OM -.->|"Future approved actions"| IB
+  AS["AgentSteers"] -->|"Execution status"| OM
+  OM -.->|"Future approved delegation"| AS
 ```
 
-The solid **arrows describe intended relationships**, not proof that they are all integrated. The only source-implemented Inboxtend ↔ AgentSteers bridge reviewed here is **mock-only**, and is not evidence of real Codex execution. The owner reports using Inboxtend daily, including functional agent execution; the current repository review does not independently verify that particular production path. OrbitMinder does **not** yet consume Inboxtend tasks or AgentSteers status.
+**Legend:** Solid arrows = information received by OrbitMinder (data flow, not the direction of the HTTP request); dashed arrows = planned, approval-gated control operations. The diagram does **not** claim that Inboxtend, AgentSteers, or write APIs are integrated. The existing Inboxtend–AgentSteers bridge is mock-only in the reviewed repository.
+
+**Authorization:** Inboxtend stays authoritative for mail/task records and existing runs. OrbitMinder may request an action only with explicit user approval tied to actor, task ID/revision, target executor, requested action, affected resources and expiry. The receiving server must enforce scope, owner isolation, idempotency and auditable outcomes. Uncertain dispatch results must be reconciled; do not retry blindly or double-dispatch. GitHub operations remain read-only by default.
 
 ## Ownership and non-duplication rules
 
