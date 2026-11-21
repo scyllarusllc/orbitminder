@@ -73,6 +73,36 @@ export default function InboxtendTasks() {
     return [...summaries].sort(([a], [b]) => a.localeCompare(b));
   }, [snapshot]);
 
+  const activityOverview = useMemo(() => {
+    const tasks = snapshot?.items ?? [];
+    const activities = snapshot?.agent_activities ?? [];
+    const ids = new Set(tasks.map(task => task.external_id));
+    const relevant = activities.filter(activity => ids.has(activity.task_id));
+    const byTask = new Map(tasks.map(task => [task.external_id, task]));
+    const recent = [...relevant].sort((a, b) => {
+      const left = Date.parse(a.observed_at ?? a.updated_at);
+      const right = Date.parse(b.observed_at ?? b.updated_at);
+      return (Number.isFinite(right) ? right : 0) - (Number.isFinite(left) ? left : 0);
+    }).slice(0, 12);
+    const projects = new Map<string, { matched: number; real: number; mock: number }>();
+    for (const activity of relevant) {
+      const task = byTask.get(activity.task_id);
+      if (!task) continue;
+      const name = task.project_label?.trim() || "Uncategorized";
+      const current = projects.get(name) ?? { matched: 0, real: 0, mock: 0 };
+      current.matched++;
+      if (activity.mode === "real") current.real++;
+      if (activity.mode === "mock") current.mock++;
+      projects.set(name, current);
+    }
+    return {
+      recent,
+      groups: [...projects].sort(([a], [b]) => a.localeCompare(b)),
+      matched: relevant.length,
+      withJobId: tasks.filter(task => task.executor === "agentsteers" && Boolean(task.agent_job_id)).length,
+    };
+  }, [snapshot]);
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     const rows = (snapshot?.items ?? []).filter(task =>
@@ -154,6 +184,36 @@ export default function InboxtendTasks() {
           <p className="mt-1 text-xl font-semibold tabular-nums">{item.count}</p>
         </div>)}
       </div>
+      <section className="mt-5 rounded-xl border border-white/10 p-4" aria-labelledby="agent-overview-title">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 id="agent-overview-title" className="text-sm font-semibold">AgentSteers stored activity overview</h3>
+          <span className="text-xs text-slate-400">{activityOverview.matched} matched records · {activityOverview.withJobId} tasks reference a job</span>
+        </div>
+        <p className="mt-2 text-xs text-slate-400">Historical records matched by owner and job ID, not a live execution feed. A task job reference without a match is unverified.</p>
+        {activityOverview.groups.length > 0 && <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+          {activityOverview.groups.map(([name, counts]) => <li key={name} className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs">
+            <strong className="block break-words text-white">{name}</strong>
+            <span className="mt-1 block text-slate-300">{counts.matched} matched · {counts.real} real · {counts.mock} mock</span>
+          </li>)}
+        </ul>}
+        <h4 className="mt-4 text-xs font-semibold text-slate-200">Recently observed records</h4>
+        {activityOverview.recent.length === 0 ? <p className="mt-2 text-xs text-slate-400">No matching stored AgentSteers records.</p> :
+          <ol className="mt-2 space-y-2">
+            {activityOverview.recent.map(activity => {
+              const related = snapshot.items.find(task => task.external_id === activity.task_id);
+              return <li key={activity.task_id + ":" + activity.job_id}
+                className="flex flex-wrap justify-between gap-2 rounded-lg border border-white/10 p-3 text-xs">
+                <div>
+                  <strong className="block break-words text-slate-100">{related?.title ?? "Cached task"}</strong>
+                  <span className="text-slate-300">{related?.project_label || "Uncategorized"} · {activity.state} · {activity.mode}</span>
+                  <span className="block break-all text-slate-500">Job {activity.job_id}</span>
+                </div>
+                <span className="text-slate-400">Observed {activity.observed_at ?? "unknown"}</span>
+              </li>;
+            })}
+          </ol>}
+        <p className="mt-3 text-xs text-slate-500">One stored state per matched job, not a complete event history. No actions are available here.</p>
+      </section>
       <div className="mt-5 rounded-xl border border-white/10 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold">Projects in this snapshot</h3>
